@@ -298,7 +298,7 @@
       margin: 24px 0 12px;
     }
 
-    /* Extra gap before Workflow Map comes from .journey-stage padding-bottom (desktop). */
+    /* Workflow Map title: no extra top margin (gap comes from .journey-stage padding-bottom on desktop). */
     .journey-stage + .section-title {
       margin-top: 0;
     }
@@ -323,22 +323,22 @@
 
     @media (min-width: 1100px) {
       .journey-stage {
+        display: block;
+        /* Breathing room before Workflow Map (~half of previous 48svh). */
+        padding-bottom: 24svh;
+        --sticky-rail-top: max(20px, calc(50svh - 16rem));
+      }
+
+      .journey-stage-row {
+        display: grid;
         grid-template-columns: 96px minmax(360px, 420px) minmax(320px, 1fr);
-        /* Breathing room before Workflow Map; stamps/sidecard scroll up with this block. */
-        padding-bottom: 25svh;
-        /* Viewport-centered sticky rails; Step 9 pins both to the top. */
-        --sticky-sidebar-top: max(20px, calc(50svh - 17.5rem));
-        --sticky-sidecard-top: max(20px, calc(50svh - 15rem));
+        gap: 16px;
+        align-items: start;
       }
 
-      .journey-stage:has(.phone[data-step="9"].is-active) {
-        --sticky-sidebar-top: 20px;
-        --sticky-sidecard-top: 20px;
-      }
-
-      /* Scroll room above Step 0 so scrollIntoView(..., block: "center") can succeed on load. */
-      .journey-stage .phones {
+      .journey-stage-row > .phones {
         padding-top: 50svh;
+        padding-bottom: 65svh;
       }
     }
 
@@ -353,7 +353,7 @@
         align-content: start;
         align-self: start;
         position: sticky;
-        top: var(--sticky-sidebar-top, 20px);
+        top: var(--sticky-rail-top, 20px);
         z-index: 2;
       }
     }
@@ -426,7 +426,7 @@
       .workflow-sidecard {
         align-self: start;
         position: sticky;
-        top: var(--sticky-sidecard-top, 20px);
+        top: var(--sticky-rail-top, 20px);
         z-index: 2;
       }
     }
@@ -565,6 +565,10 @@
         overflow-x: hidden;
         display: flex;
         flex-direction: column;
+      }
+
+      .journey-stage-row {
+        display: contents;
       }
 
       .phones {
@@ -1454,6 +1458,7 @@
 <body>
   <main class="wrap">
     <div class="journey-stage">
+    <div class="journey-stage-row">
     <nav class="step-stamps" aria-label="Journey step shortcuts">
       <button class="step-stamp is-active" data-step-shortcut="0"><span class="num">0</span><span class="lbl">Entry</span></button>
       <button class="step-stamp" data-step-shortcut="1"><span class="num">1</span><span class="lbl">Language</span></button>
@@ -1856,6 +1861,7 @@
       </div>
     </aside>
     </div>
+    </div>
 
     <h2 class="section-title">Workflow Map (Detailed)</h2>
     <section class="flow-grid">
@@ -2248,13 +2254,102 @@
         step4LoginBtn.disabled = !(consentPrivacy.checked && consentMarketing.checked);
       }
 
+      /* Same geometry as .journey-stage --sticky-rail-top: max(20px, calc(50svh - 16rem)).
+         Phone scroll used innerHeight/2; rails use svh, so the mockup sat slightly off the rail midline. */
+      function get100svhPx() {
+        const probe = document.createElement("div");
+        probe.style.cssText =
+          "position:fixed;left:0;top:0;height:100svh;width:0;pointer-events:none;visibility:hidden;z-index:-1;";
+        document.body.appendChild(probe);
+        const h = probe.getBoundingClientRect().height;
+        probe.remove();
+        return h > 0 ? h : window.innerHeight;
+      }
+
+      /* Use the stamps’ real viewport box (not a separate svh formula) so Safari matches sticky layout when scrolling phones. */
+      function getDesktopRailMidViewportY() {
+        const stamps = document.querySelector(".step-stamps");
+        if (!stamps) return window.innerHeight * 0.5;
+        const r = stamps.getBoundingClientRect();
+        if (r.height > 1 && r.width > 0) {
+          return r.top + r.height * 0.5;
+        }
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const stickyTop = Math.max(20, get100svhPx() * 0.5 - 16 * rem);
+        return stickyTop + stamps.offsetHeight * 0.5;
+      }
+
       function scrollPhoneIntoViewCenter(phoneEl, smooth) {
         if (!phoneEl || window.matchMedia("(max-width: 1099px)").matches) return;
-        phoneEl.scrollIntoView({
-          behavior: smooth ? "smooth" : "instant",
-          block: "center",
-          inline: "center"
-        });
+        /* Center the active phone on the sticky rails’ midline (not raw viewport center). */
+        const rect = phoneEl.getBoundingClientRect();
+        const viewH = window.innerHeight;
+        const elCenterViewport = rect.top + rect.height / 2;
+        const targetMidY = getDesktopRailMidViewportY();
+        const delta = elCenterViewport - targetMidY;
+        const target = window.scrollY + delta;
+        const maxScroll = Math.max(
+          0,
+          document.documentElement.scrollHeight - viewH
+        );
+        const top = Math.max(0, Math.min(target, maxScroll));
+        window.scrollTo({ top: top, behavior: smooth ? "smooth" : "instant" });
+      }
+
+      function syncWorkflowSidecardHeightToStamps() {
+        if (!workflowSidecard) return;
+        const stampsNav = document.querySelector(".step-stamps");
+        if (!stampsNav) return;
+        if (!window.matchMedia("(min-width: 1100px)").matches) {
+          workflowSidecard.style.removeProperty("min-height");
+          workflowSidecard.style.removeProperty("max-height");
+          workflowSidecard.style.removeProperty("overflow-y");
+          return;
+        }
+        const hPx = stampsNav.offsetHeight + "px";
+        /* Same box height as stamps so both sticky rails share one geometry when they release at section end. */
+        workflowSidecard.style.minHeight = hPx;
+        workflowSidecard.style.maxHeight = hPx;
+        workflowSidecard.style.overflowY = "auto";
+      }
+
+      /* Ensure document scroll is never maxed out before the last phone reaches the rail midline (avoids rail vs phone slip). */
+      function syncPhonesScrollPaddingBottom() {
+        const phonesCol = document.querySelector(".journey-stage-row > .phones");
+        const lastPhone = document.querySelector('.phones .phone[data-step="9"]');
+        if (!phonesCol || !lastPhone) return;
+        if (window.matchMedia("(max-width: 1099px)").matches) {
+          phonesCol.style.removeProperty("padding-bottom");
+          return;
+        }
+        const targetMid = getDesktopRailMidViewportY();
+        const viewH = window.innerHeight;
+        const doc = document.documentElement;
+        let extraPx = 0;
+        for (let i = 0; i < 18; i++) {
+          if (extraPx === 0) {
+            phonesCol.style.removeProperty("padding-bottom");
+          } else {
+            phonesCol.style.paddingBottom = "calc(65svh + " + extraPx + "px)";
+          }
+          void phonesCol.offsetHeight;
+          const r = lastPhone.getBoundingClientRect();
+          const centerDoc = r.top + window.scrollY + r.height * 0.5;
+          const idealScroll = centerDoc - targetMid;
+          const maxScroll = Math.max(0, doc.scrollHeight - viewH);
+          if (maxScroll + 1 >= idealScroll) {
+            if (extraPx === 0) {
+              phonesCol.style.removeProperty("padding-bottom");
+            }
+            return;
+          }
+          extraPx += Math.max(16, Math.ceil(idealScroll - maxScroll));
+        }
+      }
+
+      function syncDesktopJourneyLayout() {
+        syncWorkflowSidecardHeightToStamps();
+        syncPhonesScrollPaddingBottom();
       }
 
       function setActivePhone(stepId) {
@@ -2273,10 +2368,6 @@
           const isActive = stamp.getAttribute("data-step-shortcut") === stepId;
           stamp.classList.toggle("is-active", isActive);
         });
-
-        if (activePhone && !wasAlreadyActive) {
-          scrollPhoneIntoViewCenter(activePhone, true);
-        }
 
         const details = workflowDetails[stepId];
         if (details && sidecardTitle && sidecardSummary && sidecardTrigger && sidecardOutcome && sidecardOwner) {
@@ -2297,6 +2388,13 @@
             workflowSidecard.style.removeProperty("display");
           }
         }
+
+        requestAnimationFrame(function () {
+          syncDesktopJourneyLayout();
+          if (activePhone && !wasAlreadyActive) {
+            scrollPhoneIntoViewCenter(activePhone, true);
+          }
+        });
       }
 
       const phoneJourney = document.querySelector(".phones");
@@ -2339,6 +2437,11 @@
         });
       });
 
+      const stampsNavEl = document.querySelector(".step-stamps");
+      if (stampsNavEl && typeof ResizeObserver !== "undefined") {
+        new ResizeObserver(syncDesktopJourneyLayout).observe(stampsNavEl);
+      }
+
       const allScreens = Array.from(document.querySelectorAll(".phones .screen"));
       allScreens.forEach(function (screen) {
         const phone = screen.closest(".phone[data-step]");
@@ -2366,10 +2469,13 @@
         if (sid) setActivePhone(sid);
       });
 
-      /* Desktop: Step 0 (and default active step) start vertically centered like other step jumps. */
+      /* Desktop: Step 0 starts on the same rail midline as other step jumps. */
       function runInitialDesktopPhoneCenter() {
-        const active = document.querySelector(".phones .phone.is-active[data-step]");
-        scrollPhoneIntoViewCenter(active, false);
+        requestAnimationFrame(function () {
+          syncDesktopJourneyLayout();
+          const active = document.querySelector(".phones .phone.is-active[data-step]");
+          scrollPhoneIntoViewCenter(active, false);
+        });
       }
 
       if (document.readyState === "complete") {
