@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fancam Workflow Wireframe v1</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --ink: #121418;
+      --muted: #57606a;
+      --card: #ffffff;
+      --line: #d0d7de;
+      --accent: #0969da;
+      --ok: #1f883d;
+      --warn: #9a6700;
+      --violet: #8250df;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.45;
+    }
+
+    .wrap {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+
+    .topbar {
+      background: var(--card);
+      border: 2px dashed var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .topbar h1 {
+      font-size: 24px;
+      margin-bottom: 6px;
+    }
+
+    .topbar p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .tag {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 12px;
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    @media (min-width: 1050px) {
+      .flow-grid {
+        grid-template-columns: repeat(4, minmax(260px, 1fr));
+      }
+    }
+
+    .step {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 330px;
+      position: relative;
+    }
+
+    .step::after {
+      content: "→";
+      position: absolute;
+      right: -10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      background: var(--bg);
+      padding: 0 4px;
+      font-size: 20px;
+    }
+
+    .step.end::after,
+    .step.break::after,
+    .step.mobile::after {
+      content: "";
+    }
+
+    .index {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      background: #eaeef2;
+      border: 1px solid var(--line);
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .step h2 {
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+
+    .ui {
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+      background: #fcfcfd;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: white;
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .field {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: white;
+      font-size: 13px;
+      color: var(--ink);
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .btn.success {
+      background: var(--ok);
+      color: white;
+      border-color: var(--ok);
+    }
+
+    .btn.warning {
+      background: var(--warn);
+      color: white;
+      border-color: var(--warn);
+    }
+
+    .btn.secondary {
+      background: #f6f8fa;
+    }
+
+    .btn.violet {
+      background: var(--violet);
+      color: white;
+      border-color: var(--violet);
+    }
+
+    .line {
+      height: 10px;
+      border-radius: 5px;
+      background: #e7ebef;
+    }
+
+    .line.short { width: 65%; }
+    .line.mid { width: 80%; }
+
+    .kpi {
+      margin-top: 10px;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .kpi span {
+      font-size: 11px;
+      color: #334155;
+      background: #eef2f6;
+      border: 1px solid #d8e0e8;
+      border-radius: 999px;
+      padding: 3px 8px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      margin: 24px 0 12px;
+    }
+
+    .phones {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    @media (min-width: 1020px) {
+      .phones {
+        grid-template-columns: repeat(3, minmax(220px, 1fr));
+      }
+    }
+
+    .phone {
+      width: 100%;
+      border: 2px solid #1f2328;
+      border-radius: 28px;
+      background: #111827;
+      padding: 10px;
+      color: #e5e7eb;
+      max-width: 320px;
+      margin: 0 auto;
+      aspect-ratio: 9 / 16;
+      min-height: 520px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .phone-top {
+      width: 90px;
+      height: 14px;
+      border-radius: 999px;
+      background: #1f2937;
+      margin: 0 auto 12px;
+    }
+
+    .screen {
+      background: #f8fafc;
+      color: #0f172a;
+      border-radius: 18px;
+      padding: 12px;
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      gap: 9px;
+      align-content: start;
+      overflow: hidden;
+    }
+
+    .screen h3 {
+      font-size: 15px;
+    }
+
+    .screen p {
+      color: #475569;
+      font-size: 12px;
+    }
+
+    .brand-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid #d6dee8;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #e8f0ff, #f8fafc);
+    }
+
+    .brand-banner-meta {
+      display: grid;
+      gap: 1px;
+      min-width: 0;
+    }
+
+    .brand-banner-label {
+      font-size: 10px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      line-height: 1.1;
+    }
+
+    .brand-banner-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+
+    .brand-banner-logo {
+      flex-shrink: 0;
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      border: 1px dashed #94a3b8;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    .brand-banner-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .mock-image {
+      height: 90px;
+      border: 1px dashed #94a3b8;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #e2e8f0, #f1f5f9);
+    }
+
+    .capture-preview {
+      position: relative;
+      height: 118px;
+      border: 1px dashed #94a3b8;
+      border-radius: 10px;
+      background:
+        radial-gradient(circle at 20% 20%, #f8fafc 0%, #dbe3ed 35%, #c9d6e6 100%);
+      overflow: hidden;
+    }
+
+    .capture-scenarios {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .capture-scenario {
+      display: grid;
+      gap: 4px;
+    }
+
+    .capture-scenario-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: #334155;
+      text-align: center;
+      border: 1px solid #d6dee8;
+      background: #f1f5f9;
+      border-radius: 999px;
+      padding: 3px 6px;
+    }
+
+    .capture-preview.landscape-safe::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to top, rgba(15, 23, 42, 0.3) 0 24%, transparent 24% 76%, rgba(15, 23, 42, 0.3) 76% 100%),
+        linear-gradient(to right, rgba(15, 23, 42, 0.3) 0 6%, transparent 6% 94%, rgba(15, 23, 42, 0.3) 94% 100%);
+      pointer-events: none;
+    }
+
+    .capture-preview.landscape-safe::after {
+      content: "";
+      position: absolute;
+      top: 24%;
+      bottom: 24%;
+      left: 6%;
+      right: 6%;
+      border: 2px dashed #0f172a;
+      border-radius: 8px;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+      pointer-events: none;
+    }
+
+    .capture-preview.portrait-safe::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to top, rgba(15, 23, 42, 0.3) 0 10%, transparent 10% 90%, rgba(15, 23, 42, 0.3) 90% 100%),
+        linear-gradient(to right, rgba(15, 23, 42, 0.3) 0 24%, transparent 24% 76%, rgba(15, 23, 42, 0.3) 76% 100%);
+      pointer-events: none;
+    }
+
+    .capture-preview.portrait-safe::after {
+      content: "";
+      position: absolute;
+      top: 10%;
+      bottom: 10%;
+      left: 24%;
+      right: 24%;
+      border: 2px dashed #0f172a;
+      border-radius: 8px;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+      pointer-events: none;
+    }
+
+    .safe-area {
+      position: absolute;
+      inset: 0;
+    }
+
+    .safe-area::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(to top, rgba(15, 23, 42, 0.28) 0 18%, transparent 18% 82%, rgba(15, 23, 42, 0.28) 82% 100%),
+        linear-gradient(to right, rgba(15, 23, 42, 0.28) 0 10%, transparent 10% 90%, rgba(15, 23, 42, 0.28) 90% 100%);
+      pointer-events: none;
+    }
+
+    .safe-area::after {
+      content: "";
+      position: absolute;
+      top: 18%;
+      bottom: 18%;
+      left: 10%;
+      right: 10%;
+      border: 2px dashed #0f172a;
+      border-radius: 8px;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+      pointer-events: none;
+    }
+
+    .safe-label {
+      position: absolute;
+      left: 50%;
+      bottom: 8px;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.85);
+      color: #f8fafc;
+      border-radius: 999px;
+      font-size: 11px;
+      line-height: 1;
+      padding: 4px 8px;
+      letter-spacing: 0.01em;
+    }
+
+    .branch-section {
+      margin-top: 24px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .branch-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .branch-view {
+      display: none;
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      background: #fcfcfd;
+    }
+
+    .branch-view.active {
+      display: block;
+    }
+
+    .notes-box {
+      margin-top: 24px;
+      background: #fffef5;
+      border: 1px solid #eedf96;
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .notes-box ul {
+      margin: 8px 0 0 18px;
+      padding: 0;
+      color: #5f4a00;
+    }
+
+    .result-card {
+      display: grid;
+      gap: 8px;
+      border: 1px solid #d6dee8;
+      border-radius: 10px;
+      background: #ffffff;
+      padding: 8px;
+    }
+
+    .result-image {
+      position: relative;
+      height: 150px;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px dashed #94a3b8;
+      background: linear-gradient(135deg, #dbe7ff, #eef2ff 45%, #f8fafc 100%);
+    }
+
+    .result-badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(15, 23, 42, 0.85);
+      color: #f8fafc;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    .result-badge img {
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .result-share {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="topbar">
+      <h1>Fancam Wireframe (v1)</h1>
+      <p>Interactive, mobile-first workflow draft for team alignment and iteration.</p>
+      <div class="legend">
+        <span class="tag">Guest-first flow</span>
+        <span class="tag">QR / direct link entry</span>
+        <span class="tag">Back camera priority</span>
+        <span class="tag">Contact gate before photo + offer</span>
+        <span class="tag">White-label ready</span>
+      </div>
+    </section>
+
+    <h2 class="section-title">Mobile Screen Wireframe (Team Demo View)</h2>
+    <section class="phones">
+      <article class="phone">
+        <div class="phone-top"></div>
+        <div class="screen">
+          <h3>Step 0: Entry Point (Browser Only)</h3>
+          <p>Users always start in a browser: scan QR with default camera app, tap social link, or type URL.</p>
+          <div class="mock-image"></div>
+          <button class="btn secondary">Scan QR with Camera App</button>
+          <button class="btn secondary">Open Direct Link (FB / Instagram)</button>
+          <button class="btn secondary">Type URL in Browser</button>
+          <button class="btn primary">Open Web App</button>
+          <div class="kpi">
+            <span>KPI: QR to landing success</span>
+            <span>KPI: social link open rate</span>
+            <span>KPI: browser load success</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="phone">
+        <div class="phone-top"></div>
+        <div class="screen">
+          <h3>Step 1: Language Selection</h3>
+          <p>After browser entry, user selects language and continues without an event-card step.</p>
+          <div class="brand-banner" aria-label="Event branding banner">
+            <div class="brand-banner-meta">
+              <span class="brand-banner-label">Event</span>
+              <span class="brand-banner-title">CONSTRUMA</span>
+            </div>
+            <span class="brand-banner-logo">
+              <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+            </span>
+          </div>
+          <div class="mock-image"></div>
+          <select class="field" aria-label="Select language">
+            <option selected>English</option>
+            <option>Hungarian</option>
+            <option>German</option>
+            <option>Romanian</option>
+          </select>
+          <button class="btn primary">Continue</button>
+          <div class="kpi">
+            <span>KPI: landing → capture CTR</span>
+            <span>KPI: language selection rate</span>
+            <span>KPI: QR success rate</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="phone">
+        <div class="phone-top"></div>
+        <div class="screen">
+          <h3>Step 2: Instant Capture</h3>
+          <p>Creative orientation defines camera crop + safe area (independent of how phone is held).</p>
+          <div class="brand-banner" aria-label="Event branding banner">
+            <div class="brand-banner-meta">
+              <span class="brand-banner-label">Event</span>
+              <span class="brand-banner-title">CONSTRUMA</span>
+            </div>
+            <span class="brand-banner-logo">
+              <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+            </span>
+          </div>
+          <div class="capture-scenarios">
+            <div class="capture-scenario">
+              <span class="capture-scenario-label">Landscape frame selected</span>
+              <div class="capture-preview landscape-safe" aria-label="Landscape frame preview area">
+                <span class="safe-label">Safe: center band</span>
+              </div>
+            </div>
+            <div class="capture-scenario">
+              <span class="capture-scenario-label">Portrait frame selected</span>
+              <div class="capture-preview portrait-safe" aria-label="Portrait frame preview area">
+                <span class="safe-label">Safe: center column</span>
+              </div>
+            </div>
+          </div>
+          <button class="btn primary">Take Photo</button>
+          <button class="btn secondary">Submit Photo</button>
+          <button class="btn secondary">Retake</button>
+          <div class="kpi">
+            <span>KPI: camera open success</span>
+            <span>KPI: upload completion</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="phone">
+        <div class="phone-top"></div>
+        <div class="screen">
+          <h3>Step 3: Get Photo + Offer</h3>
+          <p>Ask for contact details after the first value moment (email/social).</p>
+          <div class="brand-banner" aria-label="Event branding banner">
+            <div class="brand-banner-meta">
+              <span class="brand-banner-label">Event</span>
+              <span class="brand-banner-title">CONSTRUMA</span>
+            </div>
+            <span class="brand-banner-logo">
+              <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+            </span>
+          </div>
+          <div class="mock-image"></div>
+          <button class="btn success">Guest Upload Complete</button>
+          <button class="btn violet" data-branch-btn="email">Continue with Email</button>
+          <button class="btn violet" data-branch-btn="social">Continue with Social Login</button>
+          <div class="kpi">
+            <span>KPI: guest → lead conversion</span>
+            <span>KPI: offer open rate</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="phone">
+        <div class="phone-top"></div>
+        <div class="screen">
+          <h3>Step 4: Return Branded Image + Share</h3>
+          <p>After successful email or social login, return branded result and allow social sharing.</p>
+          <div class="brand-banner" aria-label="Event branding banner">
+            <div class="brand-banner-meta">
+              <span class="brand-banner-label">Event</span>
+              <span class="brand-banner-title">CONSTRUMA</span>
+            </div>
+            <span class="brand-banner-logo">
+              <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+            </span>
+          </div>
+          <div class="result-card">
+            <div class="result-image">
+              <div class="result-badge">
+                <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+                <span>CONSTRUMA</span>
+              </div>
+            </div>
+            <button class="btn success">View Branded Image</button>
+            <div class="result-share">
+              <button class="btn secondary">Facebook</button>
+              <button class="btn secondary">Instagram</button>
+              <button class="btn secondary">WhatsApp</button>
+              <button class="btn secondary">Copy Link</button>
+            </div>
+          </div>
+          <div class="kpi">
+            <span>KPI: branded result view rate</span>
+            <span>KPI: social share rate</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="phone">
+        <div class="phone-top"></div>
+        <div class="screen">
+          <h3>Step 5: Shared Photo Landing Page</h3>
+          <p>Every captured photo has its own shareable webpage with event branding, final image, and sponsor CTA.</p>
+          <div class="brand-banner" aria-label="Event branding banner">
+            <div class="brand-banner-meta">
+              <span class="brand-banner-label">Event</span>
+              <span class="brand-banner-title">CONSTRUMA</span>
+            </div>
+            <span class="brand-banner-logo">
+              <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+            </span>
+          </div>
+          <div class="result-card">
+            <div class="result-image">
+              <div class="result-badge">
+                <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+                <span>CONSTRUMA</span>
+              </div>
+            </div>
+            <button class="btn secondary">Unique URL: /share/photo-id</button>
+            <button class="btn warning">Sponsor CTA: Visit Partner Offer</button>
+          </div>
+          <div class="kpi">
+            <span>KPI: share page open rate</span>
+            <span>KPI: sponsor CTA click rate</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="branch-section">
+      <h2>Email vs Social Branch (Clickable)</h2>
+      <p class="note">Use the buttons to demo the two branches separately to the team.</p>
+      <div class="branch-actions">
+        <button class="btn primary" data-branch-btn="email">Email Branch</button>
+        <button class="btn secondary" data-branch-btn="social">Social Branch</button>
+      </div>
+
+      <div id="branch-email" class="branch-view active">
+        <h3>Step 4A: Email Flow</h3>
+        <div class="ui">
+          <button class="btn">Email Field</button>
+          <button class="btn">Consent Checkbox</button>
+          <button class="btn success">Login / Verify Email</button>
+          <div class="result-card">
+            <div class="result-image">
+              <div class="result-badge">
+                <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+                <span>CONSTRUMA</span>
+              </div>
+            </div>
+            <button class="btn success">Return Branded Image</button>
+            <div class="result-share">
+              <button class="btn secondary">Share Facebook</button>
+              <button class="btn secondary">Share Instagram</button>
+              <button class="btn secondary">Share WhatsApp</button>
+              <button class="btn secondary">Copy Link</button>
+            </div>
+          </div>
+        </div>
+        <div class="kpi">
+          <span>KPI: email submit rate</span>
+          <span>KPI: branded result view rate</span>
+          <span>KPI: social share rate</span>
+        </div>
+      </div>
+
+      <div id="branch-social" class="branch-view">
+        <h3>Step 4B: Social Login Flow</h3>
+        <div class="ui">
+          <button class="btn">Google / Apple / Facebook</button>
+          <button class="btn">Approve Permission</button>
+          <button class="btn success">Login Success</button>
+          <div class="result-card">
+            <div class="result-image">
+              <div class="result-badge">
+                <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+                <span>CONSTRUMA</span>
+              </div>
+            </div>
+            <button class="btn success">Return Branded Image</button>
+            <div class="result-share">
+              <button class="btn secondary">Share Facebook</button>
+              <button class="btn secondary">Share Instagram</button>
+              <button class="btn secondary">Share WhatsApp</button>
+              <button class="btn secondary">Copy Link</button>
+            </div>
+          </div>
+        </div>
+        <div class="kpi">
+          <span>KPI: social auth success</span>
+          <span>KPI: branded result view rate</span>
+          <span>KPI: social share rate</span>
+        </div>
+      </div>
+    </section>
+
+    <h2 class="section-title">Workflow Map (Detailed)</h2>
+    <section class="flow-grid">
+      <article class="step mobile">
+        <div class="index">0</div>
+        <h2>Entry Point (Browser Start)</h2>
+        <p class="note">Journey starts outside app: scan QR with default camera, open direct social link, or type URL in browser.</p>
+        <div class="ui">
+          <button class="btn">Scan QR (default camera app)</button>
+          <button class="btn">Tap FB / Instagram link</button>
+          <button class="btn">Type URL in browser</button>
+          <div class="line"></div>
+          <div class="line short"></div>
+        </div>
+        <div class="kpi">
+          <span>QR-to-open success%</span>
+          <span>social link open%</span>
+          <span>browser load success%</span>
+        </div>
+      </article>
+
+      <article class="step mobile">
+        <div class="index">1</div>
+        <h2>Step 1: Language Selection</h2>
+        <p class="note">After browser landing, choose language first and continue to capture flow.</p>
+        <div class="ui">
+          <select class="field" aria-label="Language selector">
+            <option selected>English</option>
+            <option>Hungarian</option>
+            <option>German</option>
+            <option>Romanian</option>
+          </select>
+          <button class="btn primary">Continue</button>
+          <div class="line"></div>
+          <div class="line short"></div>
+        </div>
+        <div class="kpi">
+          <span>landing to continue%</span>
+          <span>language change%</span>
+          <span>step1 completion rate</span>
+        </div>
+      </article>
+
+      <article class="step mobile">
+        <div class="index">2</div>
+        <h2>Step 2: Instant Capture</h2>
+        <p class="note">Camera opens immediately with safe-area guide; back camera preferred.</p>
+        <div class="ui">
+          <button class="btn primary">Back Camera</button>
+          <button class="btn secondary">Show branded frame safe area</button>
+          <button class="btn">Upload from Gallery</button>
+          <button class="btn">Retake</button>
+          <div class="line mid"></div>
+        </div>
+        <div class="kpi">
+          <span>camera permission accept%</span>
+          <span>retake ratio</span>
+        </div>
+      </article>
+
+      <article class="step break mobile">
+        <div class="index">3</div>
+        <h2>Step 3: Get Photo + Offer</h2>
+        <p class="note">After upload success, ask for email or social login to return and share branded image.</p>
+        <div class="ui">
+          <button class="btn success">Photo Uploaded Successfully</button>
+          <button class="btn">Continue with Email</button>
+          <button class="btn">Continue with Social Login</button>
+          <div class="line"></div>
+        </div>
+        <div class="kpi">
+          <span>upload success%</span>
+          <span>guest-to-login start%</span>
+          <span>email vs social split</span>
+        </div>
+      </article>
+
+      <article class="step mobile">
+        <div class="index">4</div>
+        <h2>Step 4A: Email Login → Branded Result + Share</h2>
+        <p class="note">User logs in with email, receives branded image with event + logo, then shares.</p>
+        <div class="ui">
+          <button class="btn">Email Field + Verify</button>
+          <button class="btn success">Return Branded Image</button>
+          <button class="btn">Share Facebook / Instagram / WhatsApp</button>
+          <button class="btn">Copy Link</button>
+        </div>
+        <div class="kpi">
+          <span>email auth success%</span>
+          <span>branded result view%</span>
+          <span>share rate</span>
+        </div>
+      </article>
+
+      <article class="step mobile">
+        <div class="index">4B</div>
+        <h2>Step 4B: Social Login → Branded Result + Share</h2>
+        <p class="note">User logs in with social provider, receives branded image with event + logo, then shares.</p>
+        <div class="ui">
+          <button class="btn">Google / Apple / Facebook</button>
+          <button class="btn success">Return Branded Image</button>
+          <button class="btn">Share Facebook / Instagram / WhatsApp</button>
+          <button class="btn">Copy Link</button>
+        </div>
+        <div class="kpi">
+          <span>social auth success%</span>
+          <span>branded result view%</span>
+          <span>share rate</span>
+        </div>
+      </article>
+
+      <article class="step mobile">
+        <div class="index">5</div>
+        <h2>Step 5: Shared Photo Landing Page</h2>
+        <p class="note">Each captured photo gets its own share URL page with event info, branded image, and sponsor CTA.</p>
+        <div class="ui">
+          <button class="btn">Open unique photo URL</button>
+          <button class="btn success">View branded photo</button>
+          <button class="btn warning">Sponsor CTA button</button>
+          <div class="line"></div>
+        </div>
+        <div class="kpi">
+          <span>share page open%</span>
+          <span>branded photo view%</span>
+          <span>sponsor CTA click%</span>
+        </div>
+      </article>
+    </section>
+
+    <h2 class="section-title">Platform / Business Layer</h2>
+    <section class="flow-grid">
+      <article class="step end">
+        <div class="index">A</div>
+        <h2>White Label Mode</h2>
+        <p class="note">Partner branding: logo, colors, copy, and journey variants.</p>
+        <div class="ui">
+          <button class="btn">Upload Logo</button>
+          <button class="btn">Set Brand Colors</button>
+          <button class="btn">Edit Journey Copy</button>
+        </div>
+        <div class="kpi">
+          <span>setup time / partner</span>
+          <span>brand completion%</span>
+        </div>
+      </article>
+
+      <article class="step end">
+        <div class="index">B</div>
+        <h2>Deployment Direction</h2>
+        <p class="note">Based on notes: build on the existing Vercel development path.</p>
+        <div class="ui">
+          <div class="line"></div>
+          <div class="line mid"></div>
+          <div class="line short"></div>
+        </div>
+        <div class="kpi">
+          <span>release frequency</span>
+          <span>hotfix lead time</span>
+        </div>
+      </article>
+    </section>
+
+    <section class="notes-box">
+      <h3>Iteration Checklist (Next Workshop)</h3>
+      <ul>
+        <li>Should we collect contact data before or after result preview?</li>
+        <li>Should email and social branches run in parallel in MVP?</li>
+        <li>Which Android conditions should activate popup login?</li>
+        <li>Which fields should be mandatory in white-label mode?</li>
+      </ul>
+    </section>
+  </main>
+  <script>
+    (function () {
+      const branchButtons = document.querySelectorAll("[data-branch-btn]");
+      const views = {
+        email: document.getElementById("branch-email"),
+        social: document.getElementById("branch-social")
+      };
+
+      function showBranch(type) {
+        Object.keys(views).forEach(function (key) {
+          const isActive = key === type;
+          views[key].classList.toggle("active", isActive);
+        });
+      }
+
+      branchButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          showBranch(btn.getAttribute("data-branch-btn"));
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -61,6 +61,18 @@ export default function CameraCapture({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const getTargetAspectRatio = () => {
+    if (frameWidth && frameHeight && frameWidth > 0 && frameHeight > 0) {
+      return frameWidth / frameHeight;
+    }
+
+    if (frameImage && frameImage.width > 0 && frameImage.height > 0) {
+      return frameImage.width / frameImage.height;
+    }
+
+    return 16 / 9;
+  };
+
   /**
    * Load frame overlay image
    */
@@ -168,11 +180,17 @@ export default function CameraCapture({
       // v2.8.0: Request highest available resolution for maximum quality
       // For mobile: use facingMode to select front/back camera
       // For desktop: use default camera
+      const targetAspect = getTargetAspectRatio();
+      const isLandscapeTarget = targetAspect >= 1;
+
       const constraints: MediaStreamConstraints = {
         video: {
           facingMode: { ideal: facing },
-          width: { ideal: 3840 }, // 4K
-          height: { ideal: 2160 }, // 4K
+          // Request stream dimensions that match the creative orientation,
+          // so preview/capture stays consistent regardless of phone rotation.
+          width: { ideal: isLandscapeTarget ? 3840 : 2160 },
+          height: { ideal: isLandscapeTarget ? 2160 : 3840 },
+          aspectRatio: { ideal: targetAspect },
         },
         audio: false,
       };
@@ -341,11 +359,7 @@ export default function CameraCapture({
         // Double RAF ensures we're definitely on a rendered frame
         
         // Calculate target aspect ratio from frame (or default 16:9)
-        const targetAspect = (frameWidth && frameHeight)
-          ? frameWidth / frameHeight
-          : frameImage
-            ? frameImage.width / frameImage.height
-            : 16 / 9;
+        const targetAspect = getTargetAspectRatio();
         
         const videoAspect = video.videoWidth / video.videoHeight;
         
@@ -468,11 +482,7 @@ export default function CameraCapture({
       const availableHeight = parent.clientHeight;
       
       // Calculate target aspect ratio (frame or default 16:9)
-      const targetAspect = (frameWidth && frameHeight) 
-        ? frameWidth / frameHeight
-        : frameImage
-          ? frameImage.width / frameImage.height
-          : 16 / 9;
+      const targetAspect = getTargetAspectRatio();
       
       // Fit maximum size at target aspect ratio within available space
       const containerAspectRatio = availableWidth / availableHeight;
