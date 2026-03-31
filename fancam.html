@@ -371,6 +371,13 @@
     }
 
     @media (max-width: 1099px) {
+      .wrap {
+        max-width: none;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
       .topbar,
       .branch-section,
       .flow-grid,
@@ -390,7 +397,8 @@
 
       .phones .phone {
         display: none;
-        width: min(100%, 420px);
+        width: 100%;
+        max-width: none;
         margin: 0 auto;
         border: none;
         background: transparent;
@@ -404,6 +412,10 @@
 
       .phones .phone.is-active {
         display: flex;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+        transform: none;
       }
 
       .phones .phone-top {
