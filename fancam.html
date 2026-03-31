@@ -300,6 +300,19 @@
       justify-items: center;
     }
 
+    .policy-row {
+      width: 100%;
+      display: grid;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    @media (min-width: 1100px) {
+      .policy-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .workflow-sidecard {
       border: 1px solid var(--line);
       border-radius: 12px;
@@ -353,6 +366,52 @@
       color: #0f172a;
     }
 
+    .mobile-back-btn {
+      display: none;
+    }
+
+    @media (max-width: 1099px) {
+      .topbar,
+      .branch-section,
+      .flow-grid,
+      .notes-box,
+      .section-title {
+        display: none;
+      }
+
+      .journey-stage {
+        display: block;
+      }
+
+      .phones {
+        display: block;
+      }
+
+      .phones .phone {
+        display: none;
+        width: min(100%, 420px);
+        margin: 0 auto;
+      }
+
+      .phones .phone.is-active {
+        display: flex;
+      }
+
+      .mobile-back-btn {
+        display: block;
+        margin-top: auto;
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 9px;
+        background: #f8fafc;
+        color: #0f172a;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 9px 10px;
+        cursor: pointer;
+      }
+    }
+
     .phone {
       width: 100%;
       border: 2px solid #1f2328;
@@ -399,6 +458,21 @@
       gap: 9px;
       align-content: start;
       overflow: hidden;
+    }
+
+    .screen.scrollable {
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+    }
+
+    .screen.scrollable::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .screen.scrollable::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 999px;
     }
 
     .screen h3 {
@@ -749,6 +823,63 @@
       line-height: 1.35;
     }
 
+    .feedback-badge {
+      border: 1px solid #86efac;
+      background: #dcfce7;
+      color: #166534;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .auth-info {
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #334155;
+      padding: 8px 10px;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .consent-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid #d6dee8;
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 8px 10px;
+      font-size: 13px;
+      color: #0f172a;
+    }
+
+    .consent-check input {
+      width: 16px;
+      height: 16px;
+      accent-color: #0969da;
+      margin: 0;
+      flex-shrink: 0;
+    }
+
+    .consent-link {
+      font-size: 13px;
+      color: #0969da;
+      text-decoration: underline;
+      background: none;
+      border: none;
+      padding: 0;
+      text-align: left;
+      cursor: pointer;
+      width: fit-content;
+    }
+
+    .consent-link:hover {
+      color: #0550ae;
+    }
+
   </style>
 </head>
 <body>
@@ -772,11 +903,12 @@
       <button class="step-stamp" data-step-shortcut="1"><span class="num">1</span><span class="lbl">Language</span></button>
       <button class="step-stamp" data-step-shortcut="2"><span class="num">2</span><span class="lbl">Capture</span></button>
       <button class="step-stamp" data-step-shortcut="3"><span class="num">3</span><span class="lbl">Offer</span></button>
-      <button class="step-stamp" data-step-shortcut="4"><span class="num">4</span><span class="lbl">Result</span></button>
-      <button class="step-stamp" data-step-shortcut="5"><span class="num">5</span><span class="lbl">Email</span></button>
-      <button class="step-stamp" data-step-shortcut="6"><span class="num">6</span><span class="lbl">Share</span></button>
-      <button class="step-stamp" data-step-shortcut="7"><span class="num">7</span><span class="lbl">Sponsor</span></button>
-      <button class="step-stamp" data-step-shortcut="8"><span class="num">8</span><span class="lbl">Event</span></button>
+      <button class="step-stamp" data-step-shortcut="4"><span class="num">4</span><span class="lbl">Consent</span></button>
+      <button class="step-stamp" data-step-shortcut="5"><span class="num">5</span><span class="lbl">Result</span></button>
+      <button class="step-stamp" data-step-shortcut="6"><span class="num">6</span><span class="lbl">Email</span></button>
+      <button class="step-stamp" data-step-shortcut="7"><span class="num">7</span><span class="lbl">Share</span></button>
+      <button class="step-stamp" data-step-shortcut="8"><span class="num">8</span><span class="lbl">Sponsor</span></button>
+      <button class="step-stamp" data-step-shortcut="9"><span class="num">9</span><span class="lbl">Event</span></button>
     </nav>
     <section class="phones">
       <article class="phone is-active" data-step="0">
@@ -867,7 +999,7 @@
         <div class="phone-top"></div>
         <div class="screen">
           <h3>Step 3: Get Photo + Offer</h3>
-          <p>Ask for contact details after the first value moment (email/social).</p>
+          <p>After upload success, move users to required consent checks before any login action.</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
               <span class="brand-banner-label">Event</span>
@@ -877,9 +1009,10 @@
               <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
             </span>
           </div>
-          <button class="btn success" data-activate-step="4">Guest Upload Complete</button>
-          <button class="btn violet" data-branch-btn="email" data-activate-step="4">Continue with Email</button>
-          <button class="btn violet" data-branch-btn="social" data-activate-step="4">Continue with Social Login</button>
+          <div class="feedback-badge">Guest Upload Complete</div>
+          <button class="btn warning" data-activate-step="8">Sponsor CTA: Visit Partner Offer</button>
+          <button class="btn violet" data-activate-step="4">Continue</button>
+          <button class="btn secondary" data-activate-step="4">Review Privacy / Marketing / Terms</button>
           <div class="kpi">
             <span>KPI: guest → lead conversion</span>
             <span>KPI: offer open rate</span>
@@ -889,8 +1022,84 @@
 
       <article class="phone" data-step="4">
         <div class="phone-top"></div>
+        <div class="screen scrollable">
+          <h3>Step 4: Social Login + Required Consents</h3>
+          <p>User must accept all required checkboxes first; only then social login can continue.</p>
+          <div class="brand-banner" aria-label="Event branding banner">
+            <div class="brand-banner-meta">
+              <span class="brand-banner-label">Event</span>
+              <span class="brand-banner-title">CONSTRUMA</span>
+            </div>
+            <span class="brand-banner-logo">
+              <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
+            </span>
+          </div>
+          <div class="auth-info">Google / Apple / Facebook</div>
+          <label class="consent-check">
+            <input type="checkbox" id="consent-privacy" />
+            <span>I accept Privacy Policy</span>
+          </label>
+          <label class="consent-check">
+            <input type="checkbox" id="consent-marketing" />
+            <span>I accept Marketing Consent</span>
+          </label>
+          <label class="consent-check">
+            <input type="checkbox" id="consent-terms" />
+            <span>I accept Terms and Conditions</span>
+          </label>
+          <button class="consent-link" data-activate-step="4a">Open Privacy Policy</button>
+          <button class="consent-link" data-activate-step="4b">Open Marketing Consent</button>
+          <button class="consent-link" data-activate-step="4c">Open Terms and Conditions</button>
+          <button class="btn success" id="step4-login-btn" data-activate-step="5" disabled>Login to continue</button>
+          <div class="kpi">
+            <span>KPI: all-consents acceptance rate</span>
+            <span>KPI: policy page open rate</span>
+          </div>
+        </div>
+      </article>
+
+      <div class="policy-row">
+      <article class="phone" data-step="4a">
+        <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 4: Return Branded Image + Share</h3>
+          <h3>Step 4a: Privacy Policy</h3>
+          <p>Policy landing page linked from social login consent stage.</p>
+          <div class="line"></div>
+          <div class="line"></div>
+          <div class="line short"></div>
+          <button class="btn primary" data-activate-step="4">Back to Social Login</button>
+        </div>
+      </article>
+
+      <article class="phone" data-step="4b">
+        <div class="phone-top"></div>
+        <div class="screen">
+          <h3>Step 4b: Marketing Consent</h3>
+          <p>Policy landing page linked from social login consent stage.</p>
+          <div class="line"></div>
+          <div class="line"></div>
+          <div class="line short"></div>
+          <button class="btn primary" data-activate-step="4">Back to Social Login</button>
+        </div>
+      </article>
+
+      <article class="phone" data-step="4c">
+        <div class="phone-top"></div>
+        <div class="screen">
+          <h3>Step 4c: Terms and Conditions</h3>
+          <p>Policy landing page linked from social login consent stage.</p>
+          <div class="line"></div>
+          <div class="line"></div>
+          <div class="line short"></div>
+          <button class="btn primary" data-activate-step="4">Back to Social Login</button>
+        </div>
+      </article>
+      </div>
+
+      <article class="phone" data-step="5">
+        <div class="phone-top"></div>
+        <div class="screen">
+          <h3>Step 5: Return Branded Image + Share</h3>
           <p>After successful email or social login, return branded result and allow social sharing.</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
@@ -908,12 +1117,12 @@
                 <span>CONSTRUMA</span>
               </div>
             </div>
-            <button class="btn success" data-activate-step="5">View Branded Image</button>
+            <button class="btn success" data-activate-step="6">View Branded Image</button>
             <div class="result-share">
-              <button class="btn secondary" data-activate-step="5">Facebook</button>
-              <button class="btn secondary" data-activate-step="5">Instagram</button>
-              <button class="btn secondary" data-activate-step="5">WhatsApp</button>
-              <button class="btn secondary" data-activate-step="5">Copy Link</button>
+              <button class="btn secondary" data-activate-step="6">Facebook</button>
+              <button class="btn secondary" data-activate-step="6">Instagram</button>
+              <button class="btn secondary" data-activate-step="6">WhatsApp</button>
+              <button class="btn secondary" data-activate-step="6">Copy Link</button>
             </div>
           </div>
           <div class="kpi">
@@ -923,11 +1132,11 @@
         </div>
       </article>
 
-      <article class="phone" data-step="5">
+      <article class="phone" data-step="6">
         <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 5: Email Delivery from Fancam</h3>
-          <p>After Step 4, the user receives a new email from Fancam with the branded photo and sponsor CTA.</p>
+          <h3>Step 6: Email Delivery from Fancam</h3>
+          <p>After Step 5, the user receives a new email from Fancam with the branded photo and sponsor CTA.</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
               <span class="brand-banner-label">Event</span>
@@ -943,7 +1152,7 @@
               <span class="email-from">From: Fancam</span>
             </div>
             <div class="email-body">
-              <button class="btn warning" data-activate-step="7">Sponsor CTA: Visit Partner Offer</button>
+              <button class="btn warning" data-activate-step="8">Sponsor CTA: Visit Partner Offer</button>
               <p class="email-copy">We are happy to have you at the event, and thank you for sharing your memories. Here is your photo.</p>
               <div class="result-image">
                 <div class="result-badge">
@@ -970,10 +1179,10 @@
         </div>
       </article>
 
-      <article class="phone" data-step="6">
+      <article class="phone" data-step="7">
         <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 6: Shared Photo Landing Page</h3>
+          <h3>Step 7: Shared Photo Landing Page</h3>
           <p>Every captured photo has its own shareable webpage with event branding, final image, and sponsor CTA.</p>
           <div class="brand-banner" aria-label="Event branding banner">
             <div class="brand-banner-meta">
@@ -992,7 +1201,7 @@
               </div>
             </div>
             <button class="btn secondary">Unique URL: /share/photo-id</button>
-            <button class="btn warning" data-activate-step="7">Sponsor CTA: Visit Partner Offer</button>
+            <button class="btn warning" data-activate-step="8">Sponsor CTA: Visit Partner Offer</button>
           </div>
           <div class="kpi">
             <span>KPI: share page open rate</span>
@@ -1001,10 +1210,10 @@
         </div>
       </article>
 
-      <article class="phone" data-step="7">
+      <article class="phone" data-step="8">
         <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 7: Sponsor CTA Landing Page</h3>
+          <h3>Step 8: Sponsor CTA Landing Page</h3>
           <p>This is the destination page where CTA clicks and sponsor logo clicks redirect users.</p>
           <p class="caution-note">This landing page is created and managed by the Sponsor/Partner.</p>
           <div class="cta-landing">
@@ -1021,7 +1230,7 @@
           </div>
           <div class="result-card">
             <button class="btn warning">Partner Offer / Sponsor Content</button>
-            <button class="btn secondary" data-activate-step="8">Go to Event Landing Page</button>
+            <button class="btn secondary" data-activate-step="9">Go to Event Landing Page</button>
           </div>
           <div class="kpi">
             <span>KPI: CTA redirect success rate</span>
@@ -1030,10 +1239,10 @@
         </div>
       </article>
 
-      <article class="phone" data-step="8">
+      <article class="phone" data-step="9">
         <div class="phone-top"></div>
         <div class="screen">
-          <h3>Step 8: Event Landing Page</h3>
+          <h3>Step 9: Event Landing Page</h3>
           <p>This landing page uses the same structure as Sponsor landing, but it is event-owned.</p>
           <p class="caution-note">This landing page is created and managed by the Event.</p>
           <div class="cta-landing">
@@ -1088,7 +1297,7 @@
       </div>
 
       <div id="branch-email" class="branch-view active">
-        <h3>Step 4A: Email Flow</h3>
+        <h3>Step 5A: Email Flow</h3>
         <div class="ui">
           <button class="btn">Email Field</button>
           <button class="btn">Consent Checkbox</button>
@@ -1117,7 +1326,7 @@
       </div>
 
       <div id="branch-social" class="branch-view">
-        <h3>Step 4B: Social Login Flow</h3>
+        <h3>Step 5B: Social Login Flow</h3>
         <div class="ui">
           <button class="btn">Google / Apple / Facebook</button>
           <button class="btn">Approve Permission</button>
@@ -1224,7 +1433,24 @@
 
       <article class="step mobile">
         <div class="index">4</div>
-        <h2>Step 4A: Email Login → Branded Result + Share</h2>
+        <h2>Step 4: Social Login + Consents + Policy Links</h2>
+        <p class="note">Before social login proceeds, user accepts Privacy Policy, Marketing Consent, and Terms and Conditions with links to each policy page.</p>
+        <div class="ui">
+          <button class="btn">Social login providers</button>
+          <button class="btn">Required consent checkboxes</button>
+          <button class="btn">Open policy landing pages</button>
+          <button class="btn success">Continue after all accepted</button>
+        </div>
+        <div class="kpi">
+          <span>all-consents acceptance%</span>
+          <span>policy page open%</span>
+          <span>consent completion%</span>
+        </div>
+      </article>
+
+      <article class="step mobile">
+        <div class="index">5</div>
+        <h2>Step 5A: Email Login → Branded Result + Share</h2>
         <p class="note">User logs in with email, receives branded image with event + logo, then shares.</p>
         <div class="ui">
           <button class="btn">Email Field + Verify</button>
@@ -1240,8 +1466,8 @@
       </article>
 
       <article class="step mobile">
-        <div class="index">4B</div>
-        <h2>Step 4B: Social Login → Branded Result + Share</h2>
+        <div class="index">5B</div>
+        <h2>Step 5B: Social Login → Branded Result + Share</h2>
         <p class="note">User logs in with social provider, receives branded image with event + logo, then shares.</p>
         <div class="ui">
           <button class="btn">Google / Apple / Facebook</button>
@@ -1257,14 +1483,15 @@
       </article>
 
       <article class="step mobile">
-        <div class="index">5</div>
-        <h2>Step 5: Email Delivery from Fancam</h2>
+        <div class="index">6</div>
+        <h2>Step 6: Email Delivery from Fancam</h2>
         <p class="note">After login success, user gets an email from Fancam with event banner, branded photo, and sponsor CTA.</p>
         <div class="ui">
           <button class="btn">New email in mobile inbox</button>
           <button class="btn">Body: thank you + your photo message</button>
-          <button class="btn success">Banner then photo</button>
+          <button class="btn success">CTA then photo</button>
           <button class="btn warning">Sponsor CTA in email</button>
+          <div class="line"></div>
         </div>
         <div class="kpi">
           <span>email delivery%</span>
@@ -1274,8 +1501,8 @@
       </article>
 
       <article class="step mobile">
-        <div class="index">6</div>
-        <h2>Step 6: Shared Photo Landing Page</h2>
+        <div class="index">7</div>
+        <h2>Step 7: Shared Photo Landing Page</h2>
         <p class="note">Each captured photo gets its own share URL page with event info, branded image, and sponsor CTA.</p>
         <div class="ui">
           <button class="btn">Open unique photo URL</button>
@@ -1291,8 +1518,8 @@
       </article>
 
       <article class="step mobile">
-        <div class="index">7</div>
-        <h2>Step 7: Sponsor CTA Landing Page</h2>
+        <div class="index">8</div>
+        <h2>Step 8: Sponsor CTA Landing Page</h2>
         <p class="note">CTA buttons and sponsor logo clicks redirect to the sponsor landing page using the same CTA color theme.</p>
         <div class="ui">
           <button class="btn warning">CTA Redirect Target</button>
@@ -1308,9 +1535,9 @@
       </article>
 
       <article class="step mobile">
-        <div class="index">8</div>
-        <h2>Step 8: Event Landing Page</h2>
-        <p class="note">Same landing-page structure as Step 7, but managed by the Event for event-specific content and CTAs.</p>
+        <div class="index">9</div>
+        <h2>Step 9: Event Landing Page</h2>
+        <p class="note">Same landing-page structure as Step 8, but managed by the Event for event-specific content and CTAs.</p>
         <div class="ui">
           <button class="btn warning">Event Landing Target</button>
           <button class="btn">Event Content Block</button>
@@ -1416,37 +1643,44 @@
           owner: "Fancam capture flow"
         },
         "4": {
-          title: "Step 4: Return Branded Image + Share",
+          title: "Step 4: Social Login + Required Consents",
+          summary: "User must accept Privacy Policy, Marketing Consent, and Terms and Conditions before continuing.",
+          trigger: "Open policy links and return to social login.",
+          outcome: "After all required consents, proceed to branded result.",
+          owner: "Fancam capture flow"
+        },
+        "5": {
+          title: "Step 5: Return Branded Image + Share",
           summary: "Successful auth returns branded image and enables sharing options.",
           trigger: "View result or share actions.",
           outcome: "User proceeds to email delivery.",
           owner: "Fancam capture flow"
         },
-        "5": {
-          title: "Step 5: Email Delivery from Fancam",
+        "6": {
+          title: "Step 6: Email Delivery from Fancam",
           summary: "Fancam sends a branded email with CTA, message, photo, and event banner.",
           trigger: "User opens delivered email.",
           outcome: "CTA or logo click can continue to landing destinations.",
           owner: "Fancam delivery flow"
         },
-        "6": {
-          title: "Step 6: Shared Photo Landing Page",
+        "7": {
+          title: "Step 7: Shared Photo Landing Page",
           summary: "Every photo has its own share page with branding and sponsor CTA.",
           trigger: "Open unique share URL.",
           outcome: "User can continue via sponsor CTA.",
           owner: "Fancam share experience"
         },
-        "7": {
-          title: "Step 7: Sponsor CTA Landing Page",
+        "8": {
+          title: "Step 8: Sponsor CTA Landing Page",
           summary: "Destination page for sponsor CTA and sponsor logo clicks.",
           trigger: "Click sponsor CTA or sponsor logo.",
           outcome: "User lands on partner-managed sponsor page.",
           owner: "Sponsor/Partner"
         },
-        "8": {
-          title: "Step 8: Event Landing Page",
+        "9": {
+          title: "Step 9: Event Landing Page",
           summary: "Parallel destination for event-oriented landing content.",
-          trigger: "Click event label/meta or step-7 forward action.",
+          trigger: "Click event label/meta or sponsor forward action.",
           outcome: "User lands on event-managed page.",
           owner: "Event"
         }
@@ -1457,6 +1691,15 @@
       const sidecardTrigger = document.getElementById("workflow-sidecard-trigger");
       const sidecardOutcome = document.getElementById("workflow-sidecard-outcome");
       const sidecardOwner = document.getElementById("workflow-sidecard-owner");
+      const workflowSidecard = document.getElementById("workflow-sidecard");
+      const consentPrivacy = document.getElementById("consent-privacy");
+      const consentMarketing = document.getElementById("consent-marketing");
+      const step4LoginBtn = document.getElementById("step4-login-btn");
+
+      function updateStep4LoginState() {
+        if (!consentPrivacy || !consentMarketing || !step4LoginBtn) return;
+        step4LoginBtn.disabled = !(consentPrivacy.checked && consentMarketing.checked);
+      }
 
       function setActivePhone(stepId) {
         let activePhone = null;
@@ -1464,7 +1707,7 @@
         journeyPhones.forEach(function (phone) {
           const isActive = phone.getAttribute("data-step") === stepId;
           phone.classList.toggle("is-active", isActive);
-          if (isActive) activePhone = phone;
+          if (isActive && !activePhone) activePhone = phone;
         });
 
         stepStamps.forEach(function (stamp) {
@@ -1488,12 +1731,17 @@
           sidecardOutcome.textContent = details.outcome;
           sidecardOwner.textContent = details.owner;
         }
+
+        if (workflowSidecard) {
+          const isConsentStage = stepId === "4" || stepId === "4a" || stepId === "4b" || stepId === "4c";
+          workflowSidecard.style.display = isConsentStage ? "none" : "grid";
+        }
       }
 
       branchButtons.forEach(function (btn) {
         btn.addEventListener("click", function () {
           showBranch(btn.getAttribute("data-branch-btn"));
-          setActivePhone("4");
+          setActivePhone("5");
         });
       });
 
@@ -1505,13 +1753,13 @@
 
           const eventMeta = target.closest(".brand-banner-meta");
           if (eventMeta) {
-            setActivePhone("8");
+            setActivePhone("9");
             return;
           }
 
           const sponsorLogo = target.closest(".brand-banner-logo");
           if (sponsorLogo) {
-            setActivePhone("7");
+            setActivePhone("8");
             return;
           }
 
@@ -1536,6 +1784,24 @@
           if (stepId) setActivePhone(stepId);
         });
       });
+
+      const allScreens = Array.from(document.querySelectorAll(".phones .screen"));
+      allScreens.forEach(function (screen) {
+        if (screen.querySelector(".mobile-back-btn")) return;
+        const btn = document.createElement("button");
+        btn.className = "mobile-back-btn";
+        btn.setAttribute("data-activate-step", "0");
+        btn.textContent = "Back to Main";
+        screen.appendChild(btn);
+      });
+
+      if (consentPrivacy) {
+        consentPrivacy.addEventListener("change", updateStep4LoginState);
+      }
+      if (consentMarketing) {
+        consentMarketing.addEventListener("change", updateStep4LoginState);
+      }
+      updateStep4LoginState();
     })();
   </script>
 </body>
