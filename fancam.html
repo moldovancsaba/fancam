@@ -565,6 +565,7 @@
       .flow-grid,
       .notes-box,
       .section-title,
+      .note.section-intro,
       #workflow-sidecard,
       .workflow-sidecard {
         display: none !important;
@@ -851,6 +852,10 @@
       .phones .screen .consent-check input {
         width: 22px;
         height: 22px;
+      }
+
+      .phones .screen .consent-check .consent-hint {
+        font-size: 0.75rem;
       }
 
       .phones .screen .consent-link {
@@ -1459,12 +1464,24 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      width: 100%;
+      box-sizing: border-box;
       border: 1px solid #d6dee8;
       border-radius: 8px;
       background: #ffffff;
       padding: 8px 10px;
       font-size: 13px;
       color: #0f172a;
+    }
+
+    .consent-check .consent-hint {
+      margin-left: auto;
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
     }
 
     .consent-check input {
@@ -1633,19 +1650,20 @@
               <img src="fancam_userjourney_refactoring/sample_userjourney_logo.jpg" alt="CONSTRUMA sponsor logo" />
             </span>
           </div>
-          <h3>Step 4: Social Login + Required Consents</h3>
-          <p>User must accept all required checkboxes first; only then social login can continue.</p>
+          <h3>Step 4: Social Login + Consents</h3>
+          <p>Privacy Policy and Terms and Conditions are required before login. Marketing consent is optional.</p>
           <div class="auth-info">Google / Apple / Facebook</div>
           <label class="consent-check">
-            <input type="checkbox" id="consent-privacy" />
+            <input type="checkbox" id="consent-privacy" required aria-required="true" />
             <span>I accept Privacy Policy</span>
           </label>
           <label class="consent-check">
             <input type="checkbox" id="consent-marketing" />
             <span>I accept Marketing Consent</span>
+            <span class="consent-hint" aria-hidden="true">Optional</span>
           </label>
           <label class="consent-check">
-            <input type="checkbox" id="consent-terms" />
+            <input type="checkbox" id="consent-terms" required aria-required="true" />
             <span>I accept Terms and Conditions</span>
           </label>
           <div class="consent-link-stack">
@@ -1995,9 +2013,9 @@
       <article class="step break mobile">
         <div class="index">4</div>
         <h2>Consent gate · Auth disabled until valid</h2>
-        <p class="note">Matches the main Step 4 screen: required checkboxes (e.g. privacy + marketing) and policy link-outs. Login CTA stays disabled until rules pass — same pattern for email or social path after substeps 4a–c.</p>
+        <p class="note">Matches the main Step 4 screen: Privacy and Terms required; Marketing optional. Policy link-outs and login CTA stay gated until required boxes pass — same pattern for email or social path after substeps 4a–c.</p>
         <div class="ui">
-          <button class="btn">Required consent checkboxes</button>
+          <button class="btn">Privacy + Terms required; Marketing optional</button>
           <button class="btn">Open policy / terms (new tab)</button>
           <button class="btn primary" disabled type="button">Login (gated)</button>
           <div class="line"></div>
@@ -2238,7 +2256,7 @@
       <ul>
         <li>Contact capture <strong>before</strong> vs <strong>after</strong> branded result preview — legal, conversion, and sponsor narrative implications.</li>
         <li>Single auth path vs maintaining <strong>email + social</strong> in parallel; deprecation plan if one wins.</li>
-        <li>Which <strong>consent combinations</strong> are mandatory per region (privacy-only vs privacy + marketing + terms) and how 4a–c map to live checkboxes.</li>
+        <li>Which <strong>consent combinations</strong> are mandatory per region; this demo uses required Privacy + Terms and optional Marketing — confirm 4a–c map to your live checkboxes.</li>
         <li><strong>Android / in-app browser</strong> rules: when to force full browser, popup login, or custom tabs; exact user-agent and WebView detection policy.</li>
         <li><strong>White-label</strong>: mandatory fields (address, company, VAT) vs optional; who validates and stores them.</li>
         <li><strong>Sponsor vs event</strong> CTA precedence when both appear on the same screen (3, 5, 6, 7).</li>
@@ -2333,8 +2351,8 @@
         },
         "4": {
           title: "Step 4: Consent gate + login",
-          summary: "Required checkboxes (e.g. privacy + marketing) and policy link-outs; login stays disabled until rules pass — same pattern after 4a–c drill-downs in the demo.",
-          trigger: "Accept policies and check required boxes; then Login.",
+          summary: "Privacy Policy and Terms and Conditions are required; Marketing consent is optional. Policy link-outs; login stays disabled until required boxes are checked — same pattern after 4a–c drill-downs in the demo.",
+          trigger: "Accept Privacy and Terms (Marketing optional); open policy links as needed; then Login.",
           outcome: "After all required consents, proceed to Step 5 branded result.",
           owner: "Fancam capture flow"
         },
@@ -2383,11 +2401,12 @@
       const workflowSidecard = document.getElementById("workflow-sidecard");
       const consentPrivacy = document.getElementById("consent-privacy");
       const consentMarketing = document.getElementById("consent-marketing");
+      const consentTerms = document.getElementById("consent-terms");
       const step4LoginBtn = document.getElementById("step4-login-btn");
 
       function updateStep4LoginState() {
-        if (!consentPrivacy || !consentMarketing || !step4LoginBtn) return;
-        step4LoginBtn.disabled = !(consentPrivacy.checked && consentMarketing.checked);
+        if (!consentPrivacy || !consentTerms || !step4LoginBtn) return;
+        step4LoginBtn.disabled = !(consentPrivacy.checked && consentTerms.checked);
       }
 
       /* Same geometry as .journey-stage --sticky-rail-top: max(20px, calc(50svh - 16rem)).
@@ -2596,6 +2615,9 @@
       }
       if (consentMarketing) {
         consentMarketing.addEventListener("change", updateStep4LoginState);
+      }
+      if (consentTerms) {
+        consentTerms.addEventListener("change", updateStep4LoginState);
       }
       updateStep4LoginState();
 
