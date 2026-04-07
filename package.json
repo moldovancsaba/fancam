@@ -35,6 +35,8 @@
   "homepage": "https://github.com/moldovancsaba/camera",
   "license": "MIT",
   "dependencies": {
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.37.0",
     "axios": "^1.7.0",
     "mongodb": "^6.8.0",
     "next": "16.0.10",

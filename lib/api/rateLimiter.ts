@@ -25,26 +25,17 @@
  * 
  * Production considerations:
  * - For multi-server deployments, use Redis instead of in-memory storage
- * - For serverless (Vercel), consider using Vercel KV or Upstash Redis
- * - Current implementation suitable for single-server or low-traffic apps
+ * - Set UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN for Upstash (shared limits on Vercel)
+ * - Otherwise uses in-memory token buckets (single-instance / dev)
  */
 
 import { NextRequest } from 'next/server';
 import { apiError } from './responses';
+import type { RateLimitConfig } from './rateLimitTypes';
+import { isUpstashRedisConfigured } from './upstash-redis';
+import { checkUpstashRateLimit } from './upstash-rate-limit';
 
-/**
- * Rate limit configuration options
- */
-export interface RateLimitConfig {
-  /** Maximum number of requests allowed in the time window */
-  max: number;
-  /** Time window in milliseconds */
-  windowMs: number;
-  /** Optional custom identifier (defaults to IP address) */
-  keyGenerator?: (request: NextRequest) => string;
-  /** Optional custom error message */
-  message?: string;
-}
+export type { RateLimitConfig } from './rateLimitTypes';
 
 /**
  * Token bucket entry for rate limiting
@@ -188,6 +179,16 @@ export async function checkRateLimit(
 
   const key = rateLimitBucketKey(request, identifier);
 
+  if (isUpstashRedisConfigured()) {
+    await checkUpstashRateLimit(
+      key,
+      config.max,
+      config.windowMs,
+      config.message
+    );
+    return;
+  }
+
   // Get or create bucket for this client
   let bucket = buckets.get(key);
   
@@ -238,6 +239,9 @@ export async function checkRateLimit(
  * @param maxAge - Maximum age in milliseconds before bucket is removed
  */
 export function cleanupBuckets(maxAge: number = 60 * 60 * 1000): void {
+  if (isUpstashRedisConfigured()) {
+    return;
+  }
   const now = Date.now();
   let removed = 0;
   
@@ -266,6 +270,9 @@ export function getRateLimitStatus(
   request: NextRequest,
   config: RateLimitConfig
 ): { tokens: number; resetAt: Date } | null {
+  if (isUpstashRedisConfigured()) {
+    return null;
+  }
   const identifier = config.keyGenerator
     ? config.keyGenerator(request)
     : getClientIdentifier(request);
@@ -295,6 +302,9 @@ export function getRateLimitStatus(
  * Why: Allows admins to unblock legitimate users who hit rate limits
  */
 export function resetRateLimit(identifier: string, url?: string): number {
+  if (isUpstashRedisConfigured()) {
+    return 0;
+  }
   let reset = 0;
   
   for (const [key] of buckets.entries()) {

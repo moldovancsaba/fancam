@@ -785,6 +785,10 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 | Public APIs | Slideshow playlist / next-candidate, `GET /api/events/[id]`, hashtags | Intentionally public; slideshow IDs and event IDs are capability URLs — treat as secrets in UI |
 | `npm audit` | 8 issues (incl. `next`, transitive packages) | Documented; run `npm audit fix` / plan Next patch upgrades |
 
+**Upstash (2026-04-07)**:
+- When **`UPSTASH_REDIS_REST_URL`** and **`UPSTASH_REDIS_REST_TOKEN`** are set, **`checkRateLimit`** uses **`@upstash/ratelimit`** (sliding window, same `max` / `windowMs` as `RATE_LIMITS`). Otherwise behavior is unchanged (in-memory).
+- **`getRateLimitStatus`** / **`resetRateLimit`** / **`cleanupBuckets`** are no-ops or memory-only when Upstash is enabled (limits live in Redis).
+
 **Continuation (same pass, ops hardening)**:
 - Rate-limit buckets use **`pathname:ip`** (not full URL) so query strings cannot bypass limits.
 - **`LOGIN_INIT`** on `GET /api/auth/login`; **`READ`** on `GET /api/hashtags` and **`GET /api/events/[eventId]`**; **`SLIDESHOW_PLAYLIST`** / **`SLIDESHOW_NEXT`** on public slideshow routes; **`429`** returned via thrown `NextResponse` where handlers had plain `catch`.

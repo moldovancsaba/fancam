@@ -62,4 +62,6 @@ export {
   type RateLimitConfig,
 } from './rateLimiter';
 
+export { isUpstashRedisConfigured } from './upstash-redis';
+
 export { blockDangerousApiInProduction } from './production-guard';
