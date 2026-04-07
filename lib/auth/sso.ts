@@ -294,22 +294,12 @@ export function decodeIdToken(idToken: string): SSOUser {
       Buffer.from(parts[1], 'base64url').toString('utf-8')
     );
 
-    // Debug: Log all claims in the ID token to diagnose Facebook login issue
-    console.log('[SSO] ID Token payload:', JSON.stringify(payload, null, 2));
-
     // Extract user claims from payload
     // ID token includes: sub, email, name, role, user_type
     // Note: Facebook federated login may have different claim structure
     const userEmail = payload.email || payload.preferred_username || payload.upn || 'unknown@unknown.com';
     const userName = payload.name || payload.given_name || payload.display_name || undefined;
     
-    console.log('[SSO] Extracted user info:', { 
-      id: payload.sub, 
-      email: userEmail, 
-      name: userName,
-      role: payload.role 
-    });
-
     return {
       id: payload.sub,
       email: userEmail,
@@ -323,21 +313,14 @@ export function decodeIdToken(idToken: string): SSOUser {
 }
 
 /**
- * Get user information from SSO userinfo endpoint
- * 
- * Note: This endpoint is not available in SSO v5.23.1
- * Use decodeIdToken() instead to extract user info from ID token
- * 
- * @deprecated Use decodeIdToken() instead
- * @param accessToken - Valid access token
- * @returns User information
+ * OIDC UserInfo (`/api/oauth/userinfo`). Use when ID token lacks email (e.g. federated login).
  */
 export async function getUserInfo(accessToken: string): Promise<SSOUser> {
   const endpoints = SSO_ENDPOINTS();
-  
+
   const response = await fetch(endpoints.userinfo, {
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
+      Authorization: `Bearer ${accessToken}`,
     },
   });
 
@@ -346,7 +329,26 @@ export async function getUserInfo(accessToken: string): Promise<SSOUser> {
     throw new Error(`Failed to get user info: ${response.status} ${error}`);
   }
 
-  return response.json();
+  const payload = (await response.json()) as Record<string, unknown>;
+  const sub = typeof payload.sub === 'string' ? payload.sub : '';
+  const email =
+    (typeof payload.email === 'string' && payload.email) ||
+    (typeof payload.preferred_username === 'string' && payload.preferred_username) ||
+    '';
+
+  return {
+    id: sub,
+    email,
+    name:
+      (typeof payload.name === 'string' && payload.name) ||
+      (typeof payload.given_name === 'string' && payload.given_name) ||
+      undefined,
+    email_verified:
+      typeof payload.email_verified === 'boolean'
+        ? payload.email_verified
+        : undefined,
+    role: typeof payload.role === 'string' ? payload.role : undefined,
+  };
 }
 
 /**

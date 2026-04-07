@@ -13,10 +13,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { exchangeCodeForToken, decodeIdToken } from '@/lib/auth/sso';
+import {
+  exchangeCodeForToken,
+  decodeIdToken,
+  getUserInfo,
+} from '@/lib/auth/sso';
 import { consumePendingSession, createSession } from '@/lib/auth/session';
-import { getAppPermission, hasAppAccess, isAppAdmin } from '@/lib/auth/sso-permissions';
-import { getSsoMongoUri } from '@/lib/db/sso';
+import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
 
 export async function GET(request: NextRequest) {
   try {
@@ -77,45 +80,27 @@ export async function GET(request: NextRequest) {
 
     console.log('✓ User info extracted:', user.email);
 
-    // WORKAROUND: If email is sso@doneisbetter.com, query SSO database for real email
-    // This is a bug in SSO service - it should include federated email in ID token
-    if (user.email === 'sso@doneisbetter.com' && user.id) {
-      console.log('⚠ Email is SSO service email, querying database for real user email');
+    // If ID token email is missing or the SSO placeholder, enrich from OIDC UserInfo (HTTP only).
+    const badEmail =
+      !user.email ||
+      user.email === 'sso@doneisbetter.com' ||
+      user.email === 'unknown@unknown.com';
+    if (badEmail) {
       try {
-        const { MongoClient } = await import('mongodb');
-        const client = new MongoClient(getSsoMongoUri());
-        await client.connect();
-        
-        try {
-          const db = client.db('sso');
-          // Try to find by ID first, then fall back to name matching
-          let ssoUser = await db.collection('publicUsers').findOne({ id: user.id });
-          
-          // If not found by ID, try to find by name (Facebook federated users may have different ID)
-          if (!ssoUser && user.name) {
-            console.log('⚠ User not found by ID, trying to find by name:', user.name);
-            ssoUser = await db.collection('publicUsers').findOne({ name: user.name });
-          }
-          
-          if (ssoUser && ssoUser.email && ssoUser.email !== 'sso@doneisbetter.com') {
-            console.log('✓ Found real email in SSO database:', ssoUser.email);
-            console.log('✓ Found user role:', ssoUser.role);
-            user = {
-              ...user,
-              id: ssoUser.id, // Use the real database ID
-              email: ssoUser.email,
-              name: ssoUser.name || user.name,
-              role: ssoUser.role || user.role,
-            };
-          } else {
-            console.warn('✗ Could not find real user in SSO database. Token ID:', user.id, 'Name:', user.name);
-          }
-        } finally {
-          await client.close();
+        const info = await getUserInfo(tokens.access_token);
+        const email = info.email;
+        if (email && email !== 'sso@doneisbetter.com') {
+          user = {
+            ...user,
+            id: info.id || user.id,
+            email,
+            name: info.name ?? user.name,
+            role: info.role ?? user.role,
+          };
+          console.log('✓ User profile enriched from SSO userinfo');
         }
       } catch (error) {
-        console.error('✗ Failed to query SSO database for real email:', error);
-        // Continue with ID token email as fallback
+        console.warn('⚠ SSO userinfo enrichment failed (continuing with ID token claims):', error);
       }
     }
 

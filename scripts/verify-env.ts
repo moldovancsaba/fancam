@@ -4,7 +4,7 @@
  * Usage (repo root):
  *   npx tsx scripts/verify-env.ts
  *
- * Tests: MongoDB (main + SSO), SSO OAuth discovery, ImgBB API.
+ * Tests: MongoDB (Camera), SSO OAuth discovery, ImgBB API.
  */
 
 import { MongoClient } from 'mongodb';
@@ -93,15 +93,6 @@ async function main() {
   } else {
     console.log('○ MONGODB_URI: not set');
     results.push({ name: 'MONGODB_URI', pass: false });
-  }
-
-  const ssoMongodbUri = process.env.SSO_MONGODB_URI?.trim();
-  if (ssoMongodbUri) {
-    const passed = await testMongoDB(ssoMongodbUri, 'SSO_MONGODB_URI');
-    results.push({ name: 'SSO_MONGODB_URI', pass: passed });
-  } else {
-    console.log('○ SSO_MONGODB_URI: not set');
-    results.push({ name: 'SSO_MONGODB_URI', pass: false });
   }
 
   const ssoBaseUrl = process.env.SSO_BASE_URL?.trim();

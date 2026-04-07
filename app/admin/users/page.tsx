@@ -20,11 +20,10 @@
 
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { getSession } from '@/lib/auth/session';
-import { MongoClient } from 'mongodb';
 import Link from 'next/link';
 import UserManagementActions from '@/components/admin/UserManagementActions';
 import DatabaseConnectionAlert from '@/components/admin/DatabaseConnectionAlert';
-import { getSsoMongoUri } from '@/lib/db/sso';
+import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
 
 // Force dynamic rendering (uses cookies for session)
 export const dynamic = 'force-dynamic';
@@ -60,104 +59,129 @@ export default async function AdminUsersPage() {
       .sort({ createdAt: -1 })
       .toArray();
 
-    // Fetch SSO users to get roles and status
-    const ssoClient = new MongoClient(getSsoMongoUri());
-    await ssoClient.connect();
-    let ssoUsers: any[] = [];
-    try {
-      const ssoDb = ssoClient.db('sso');
-      ssoUsers = await ssoDb.collection('publicUsers').find({}).toArray();
-    } finally {
-      await ssoClient.close();
-    }
-    
-    // Create SSO user lookup map
-    const ssoUserMap = new Map();
-    ssoUsers.forEach(u => {
-      ssoUserMap.set(u.email, {
-        id: u.id,
-        role: u.role || 'user',
-        isActive: u.isActive !== false, // Default to true
-      });
-    });
-
-    // Group submissions by user identifier
+    // Group submissions by user identifier (SSO profile loaded over HTTP below)
     const userMap = new Map<string, any>();
-    
+
     for (const submission of submissions) {
       const hasUserInfo = submission.userInfo?.email && submission.userInfo?.name;
       const isMergedPseudo = hasUserInfo && submission.userInfo?.mergedWith;
-      
-      // CRITICAL: If merged, ALWAYS use the real user's email to consolidate all submissions
-      // This prevents duplicate user entries in the list
+
       const identifier = isMergedPseudo
-        ? submission.userInfo.mergedWith  // Use the SSO user ID they were merged with
-        : (hasUserInfo ? submission.userInfo.email : (submission.userId || submission.userEmail));
-      
-      const isAnonymous = !hasUserInfo && 
+        ? submission.userInfo.mergedWith
+        : hasUserInfo
+          ? submission.userInfo.email
+          : submission.userId || submission.userEmail;
+
+      const isAnonymous =
+        !hasUserInfo &&
         (submission.userId === 'anonymous' || submission.userEmail === 'anonymous@event');
-      
+
       if (!userMap.has(identifier)) {
-        // Determine user type
-        // If submission has userInfo with mergedWith, it's now a real user (merged)
         const isPseudoUser = hasUserInfo && !isMergedPseudo;
         const isRealOrAdmin = !hasUserInfo && !isAnonymous;
         const isMergedUser = isMergedPseudo;
-        
+
+        let ssoIdForPermission: string | null = null;
+        if (isMergedUser && submission.userInfo?.mergedWith) {
+          ssoIdForPermission = submission.userInfo.mergedWith;
+        } else if (
+          isRealOrAdmin &&
+          submission.userId &&
+          submission.userId !== 'anonymous'
+        ) {
+          ssoIdForPermission = submission.userId;
+        }
+
         let userType = 'pseudo';
         let role = 'user';
         let isActive = true;
-        
+
         if (isAnonymous) {
           userType = 'anonymous';
         } else if (isMergedUser) {
-          // Merged pseudo users are now real users - look them up by merged ID
-          const mergedUserId = submission.userInfo.mergedWith;
-          // Find SSO user by ID
-          const ssoUser = ssoUsers.find(u => u.id === mergedUserId);
-          if (ssoUser) {
-            role = ssoUser.role || 'user';
-            isActive = ssoUser.isActive !== false;
-            userType = role === 'admin' ? 'administrator' : 'real';
-          } else {
-            userType = 'real'; // Fallback - merged but SSO data not found
-          }
+          userType = 'real';
         } else if (isRealOrAdmin) {
-          // Regular SSO users - check by email
-          const ssoData = ssoUserMap.get(submission.userEmail);
-          if (ssoData) {
-            role = ssoData.role;
-            isActive = ssoData.isActive;
-            userType = role === 'admin' ? 'administrator' : 'real';
-          } else {
-            userType = 'real'; // Fallback
-          }
+          userType = 'real';
         } else if (isPseudoUser) {
-          // Unmerged pseudo users
           isActive = submission.userInfo?.isActive !== false;
           userType = 'pseudo';
         }
-        
+
+        const accountDisabledMirror = submission.cameraAccountDisabled === true;
+
         userMap.set(identifier, {
           email: hasUserInfo ? submission.userInfo.email : submission.userEmail,
-          name: hasUserInfo ? submission.userInfo.name : (isAnonymous ? 'Anonymous User' : submission.userName || 'Unknown'),
-          isAnonymous: isAnonymous,
+          name: hasUserInfo
+            ? submission.userInfo.name
+            : isAnonymous
+              ? 'Anonymous User'
+              : submission.userName || 'Unknown',
+          isAnonymous,
           type: userType,
-          role: role,
-          isActive: isActive,
+          role,
+          isActive,
           mergedWith: submission.userInfo?.mergedWith,
           collectedAt: submission.userInfo?.collectedAt || submission.createdAt,
           eventId: submission.eventId,
           eventName: submission.eventName || 'Unknown Event',
           submissions: [],
+          ssoIdForPermission,
+          accountDisabledMirror,
         });
+      } else {
+        const ent = userMap.get(identifier);
+        if (ent && submission.cameraAccountDisabled) {
+          ent.accountDisabledMirror = true;
+        }
       }
-      
+
       userMap.get(identifier)?.submissions.push({
         _id: submission._id,
         imageUrl: submission.imageUrl,
         createdAt: submission.createdAt,
       });
+    }
+
+    const adminSession = await getSession();
+    if (adminSession?.accessToken) {
+      const permCache = new Map<string, Awaited<ReturnType<typeof getAppPermission>>>();
+
+      for (const u of userMap.values()) {
+        if (!u.ssoIdForPermission) continue;
+
+        try {
+          let perm = permCache.get(u.ssoIdForPermission);
+          if (!perm) {
+            perm = await getAppPermission(u.ssoIdForPermission, adminSession.accessToken);
+            permCache.set(u.ssoIdForPermission, perm);
+          }
+
+          const r = perm.role;
+          u.role = r === 'superadmin' ? 'admin' : r;
+          u.type =
+            r === 'admin' || r === 'superadmin' ? 'administrator' : 'real';
+          const approved = hasAppAccess(perm);
+          u.isActive = approved && !u.accountDisabledMirror;
+        } catch (e) {
+          console.warn('[admin/users] getAppPermission failed for', u.ssoIdForPermission, e);
+          u.isActive = !u.accountDisabledMirror;
+        }
+      }
+    } else {
+      for (const u of userMap.values()) {
+        if (u.type === 'real' || u.type === 'administrator') {
+          u.isActive = !u.accountDisabledMirror;
+        }
+      }
+    }
+
+    for (const u of userMap.values()) {
+      if (u.type === 'pseudo') {
+        u.isActive = u.isActive !== false;
+      }
+      if (u.type === 'anonymous') {
+        u.isActive = true;
+      }
     }
 
     users = Array.from(userMap.values());

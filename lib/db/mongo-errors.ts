@@ -80,11 +80,6 @@ export function describeMongoConnectionError(err: unknown): MongoConnectionDiagn
   } else if (lower.includes('mongodb_uri') && lower.includes('not defined')) {
     summary = 'Database environment variables are missing.';
     hints.push('Set MONGODB_URI and MONGODB_DB in .env locally and in your hosting provider.');
-  } else if (lower.includes('sso_mongodb_uri') && lower.includes('not defined')) {
-    summary = 'SSO database URI is not configured.';
-    hints.push(
-      'Set SSO_MONGODB_URI in .env (same Atlas-style URI as your SSO service DB). See .env.example.'
-    );
   }
 
   if (hints.length === 0) {

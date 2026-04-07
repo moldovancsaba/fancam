@@ -3,7 +3,7 @@
  * Version: 2.8.0
  * 
  * Display event details with partner info, assigned frames, and slideshows
- * v2.0.0: Filters out submissions from inactive users
+ * v2.0.0: Filters inactive users (pseudo + cameraAccountDisabled mirror)
  * v2.8.0: Style inheritance system with parent-child relationship to partners
  */
 

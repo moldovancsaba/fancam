@@ -52,29 +52,24 @@ SSO v5.24.0+ uses a **multi-app permission model** where:
 - User A: `admin` in Camera app, `user` in Analytics app
 - User B: `user` in Camera app, `admin` in Analytics app
 
-### Database Structure
+### Where permissions live (conceptual)
 
-**SSO Database** (`mongodb://...doneisbetter/sso`):
+Camera talks to SSO **over HTTPS** (`/api/oauth/*`, `/api/users/.../permissions`). It does **not** use `SSO_MONGODB_URI` or read the SSO service MongoDB.
+
+On the SSO side, permissions are still typically backed by data like **app permissions** per user and client (conceptually similar to):
 
 ```javascript
-// Collection: publicUsers
-{
-  id: "5143beb1-9bb6-47e7-a099-e9eeb2d89e93",
-  email: "moldovancsaba@gmail.com",
-  role: "user",  // ← SSO-level role (not used for app auth)
-  // ... other fields
-}
-
-// Collection: appPermissions
+// Illustrative — actual storage is inside the SSO product, not queried by Camera
 {
   userId: "5143beb1-9bb6-47e7-a099-e9eeb2d89e93",
   clientId: "1e59b6a1-3c18-4141-9139-7a3dd0da62bf",  // Camera app
-  appName: "camera",
-  role: "admin",  // ← App-specific role (USED for app auth)
+  role: "admin",
   hasAccess: true,
   status: "approved"
 }
 ```
+
+**“Deactivate” in Camera admin (SSO users):** Camera stores `cameraAccountDisabled` on **submissions** so slideshows/galleries can hide that person without a Mongo connection to SSO. That does not revoke SSO login by itself—use the SSO admin tools if login must be blocked at the IdP.
 
 ---
 
@@ -281,7 +276,7 @@ This repository **does not** currently send email from any API route; there is n
 ## References
 
 - **SSO Service**: https://sso.doneisbetter.com
-- **SSO Database**: `mongodb://...doneisbetter/sso`
+- **SSO HTTP API**: `https://sso.doneisbetter.com` (OAuth + permissions endpoints)
 - **Camera Client ID**: `1e59b6a1-3c18-4141-9139-7a3dd0da62bf`
 - **Session Interface**: `lib/auth/session.ts`
 - **OAuth Callback**: `app/api/auth/callback/route.ts`
