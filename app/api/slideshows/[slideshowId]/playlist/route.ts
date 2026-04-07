@@ -15,6 +15,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { generatePlaylist } from '@/lib/slideshow/playlist';
 import { findEventForSlideshow } from '@/lib/slideshow/resolve-event';
 import { getInactiveUserEmails } from '@/lib/db/sso';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
 
 /**
  * GET /api/slideshows/[slideshowId]/playlist?limit=N&exclude=id1,id2,id3
@@ -29,6 +30,8 @@ export async function GET(
   { params }: { params: Promise<{ slideshowId: string }> }
 ) {
   try {
+    await checkRateLimit(request, RATE_LIMITS.SLIDESHOW_PLAYLIST);
+
     const { slideshowId } = await params;
     const { searchParams } = request.nextUrl;
     const limitParam = searchParams.get('limit');
@@ -57,13 +60,18 @@ export async function GET(
 
     const eventUuid = event.eventId;
     const eventMongoId = event._id!.toString();
-    console.log(`[Playlist] Slideshow stored event ref: ${slideshow.eventId}`);
-    console.log(`[Playlist] Event UUID (event.eventId): ${eventUuid}`);
-    console.log(`[Playlist] Event Name: ${event.name}`);
+    const dbg = process.env.NODE_ENV !== 'production';
+    if (dbg) {
+      console.log(`[Playlist] Slideshow stored event ref: ${slideshow.eventId}`);
+      console.log(`[Playlist] Event UUID (event.eventId): ${eventUuid}`);
+      console.log(`[Playlist] Event Name: ${event.name}`);
+    }
 
     // Emails mirrored as inactive on submissions (cameraAccountDisabled); not SSO MongoDB
     const inactiveEmails = await getInactiveUserEmails();
-    console.log(`[Playlist] Filtering out ${inactiveEmails.size} inactive users`);
+    if (dbg) {
+      console.log(`[Playlist] Filtering out ${inactiveEmails.size} inactive users`);
+    }
 
     // Build match filter: event + exclude IDs in other playlists + archived/hidden check + active users only
     // BACKWARD COMPATIBILITY: Support both eventId (singular) and eventIds (array)
@@ -115,7 +123,11 @@ export async function GET(
       if (excludeObjectIds.length > 0) {
         // Add _id exclusion to the $and array
         matchFilter.$and.push({ _id: { $nin: excludeObjectIds } });
-        console.log(`[Playlist] Excluding ${excludeObjectIds.length} images currently in other playlists`);
+        if (dbg) {
+          console.log(
+            `[Playlist] Excluding ${excludeObjectIds.length} images currently in other playlists`
+          );
+        }
       }
     }
     
@@ -136,17 +148,21 @@ export async function GET(
       ])
       .toArray();
     
-    // DEBUG: Log first 15 submissions with their play counts AND dimensions
-    console.log(`[Playlist] Total submissions available (after filtering): ${submissions.length}`);
-    console.log(`[Playlist] Match filter:`, JSON.stringify(matchFilter, null, 2));
-    console.log('[Playlist] First 15 submissions by playCount (least played first):');
-    submissions.slice(0, 15).forEach((sub, i) => {
-      const width = sub.metadata?.finalWidth || sub.metadata?.originalWidth || '?';
-      const height = sub.metadata?.finalHeight || sub.metadata?.originalHeight || '?';
-      const ratio = (width !== '?' && height !== '?') ? (width / height).toFixed(3) : '?';
-      const hidden = sub.hiddenFromEvents || [];
-      console.log(`  ${i+1}. ${sub._id.toString().slice(-6)} - playCount: ${sub.playCount || 0}, ${width}x${height} (${ratio}), hidden: ${hidden.length > 0 ? hidden.join(',') : 'none'}`);
-    });
+    if (dbg) {
+      console.log(`[Playlist] Total submissions available (after filtering): ${submissions.length}`);
+      console.log(`[Playlist] Match filter:`, JSON.stringify(matchFilter, null, 2));
+      console.log('[Playlist] First 15 submissions by playCount (least played first):');
+      submissions.slice(0, 15).forEach((sub, i) => {
+        const width = sub.metadata?.finalWidth || sub.metadata?.originalWidth || '?';
+        const height = sub.metadata?.finalHeight || sub.metadata?.originalHeight || '?';
+        const ratio =
+          width !== '?' && height !== '?' ? (width / height).toFixed(3) : '?';
+        const hidden = sub.hiddenFromEvents || [];
+        console.log(
+          `  ${i + 1}. ${sub._id.toString().slice(-6)} - playCount: ${sub.playCount || 0}, ${width}x${height} (${ratio}), hidden: ${hidden.length > 0 ? hidden.join(',') : 'none'}`
+        );
+      });
+    }
 
     if (submissions.length === 0) {
       return NextResponse.json({
@@ -181,6 +197,9 @@ export async function GET(
       totalSubmissions: submissions.length,
     });
   } catch (error) {
+    if (error instanceof NextResponse) {
+      return error;
+    }
     console.error('Error generating playlist:', error);
     return NextResponse.json(
       { error: 'Failed to generate playlist' },

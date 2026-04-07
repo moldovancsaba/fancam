@@ -8,7 +8,7 @@
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
-import { withErrorHandler, apiSuccess } from '@/lib/api';
+import { withErrorHandler, apiSuccess, checkRateLimit, RATE_LIMITS } from '@/lib/api';
 
 /** Escape user input for safe use inside MongoDB `$regex` (avoid ReDoS / broken patterns). */
 function escapeRegex(text: string): string {
@@ -26,6 +26,8 @@ function escapeRegex(text: string): string {
  * Returns array of unique hashtag strings sorted alphabetically
  */
 export const GET = withErrorHandler(async (request: NextRequest) => {
+    await checkRateLimit(request, RATE_LIMITS.READ);
+
     const { searchParams } = request.nextUrl;
     const query = searchParams.get('q');
     const rawLimit = parseInt(searchParams.get('limit') || '50', 10);

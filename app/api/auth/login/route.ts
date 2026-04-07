@@ -15,9 +15,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generatePKCEPair, generateState, getAuthorizationUrl } from '@/lib/auth/sso';
 import { setPendingSessionCookie } from '@/lib/auth/session';
 import { parseLoginProvider } from '@/lib/auth/social-login';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
 
 export async function GET(request: NextRequest) {
   try {
+    await checkRateLimit(request, RATE_LIMITS.LOGIN_INIT);
+
     // Generate PKCE pair for security
     const { codeVerifier, codeChallenge } = generatePKCEPair();
     
@@ -47,10 +50,13 @@ export async function GET(request: NextRequest) {
     return response;
     
   } catch (error) {
+    if (error instanceof NextResponse) {
+      return error;
+    }
     console.error('✗ Login initiation failed:', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to initiate login',
         message: error instanceof Error ? error.message : 'Unknown error',
       },

@@ -85,6 +85,15 @@ export const RATE_LIMITS = {
 
   // Slideshow play-count bumps (public; generous for multi-slide batches)
   SLIDESHOW_PLAYED: { max: 200, windowMs: 60 * 1000 },
+
+  /** Public playlist generation (polls often; cap per IP per route path) */
+  SLIDESHOW_PLAYLIST: { max: 180, windowMs: 60 * 1000 },
+
+  /** Rolling-buffer next slide (same rough budget as playlist) */
+  SLIDESHOW_NEXT: { max: 180, windowMs: 60 * 1000 },
+
+  /** OAuth login start (/api/auth/login) — curb redirect storms per IP */
+  LOGIN_INIT: { max: 25, windowMs: 15 * 60 * 1000 },
 } as const;
 
 /**
@@ -116,6 +125,11 @@ function getClientIdentifier(request: NextRequest): string {
   
   // Fallback to unknown (should not happen in production)
   return 'unknown';
+}
+
+/** Bucket key uses pathname + client so different query strings share the same limit. */
+function rateLimitBucketKey(request: NextRequest, identifier: string): string {
+  return `${request.nextUrl.pathname}:${identifier}`;
 }
 
 /**
@@ -168,12 +182,12 @@ export async function checkRateLimit(
   request: NextRequest,
   config: RateLimitConfig
 ): Promise<void> {
-  const identifier = config.keyGenerator 
+  const identifier = config.keyGenerator
     ? config.keyGenerator(request)
     : getClientIdentifier(request);
-  
-  const key = `${request.url}:${identifier}`;
-  
+
+  const key = rateLimitBucketKey(request, identifier);
+
   // Get or create bucket for this client
   let bucket = buckets.get(key);
   
@@ -252,11 +266,11 @@ export function getRateLimitStatus(
   request: NextRequest,
   config: RateLimitConfig
 ): { tokens: number; resetAt: Date } | null {
-  const identifier = config.keyGenerator 
+  const identifier = config.keyGenerator
     ? config.keyGenerator(request)
     : getClientIdentifier(request);
-  
-  const key = `${request.url}:${identifier}`;
+
+  const key = rateLimitBucketKey(request, identifier);
   const bucket = buckets.get(key);
   
   if (!bucket) {
@@ -275,7 +289,7 @@ export function getRateLimitStatus(
  * Reset rate limit for a specific client (admin use only)
  * 
  * @param identifier - Client identifier (IP address)
- * @param url - Optional URL pattern to reset
+ * @param url - Optional pathname prefix to reset (bucket keys are `pathname:clientIp`)
  * @returns Number of buckets reset
  * 
  * Why: Allows admins to unblock legitimate users who hit rate limits

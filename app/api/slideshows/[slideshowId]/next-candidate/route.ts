@@ -15,6 +15,7 @@ import { connectToDatabase } from '@/lib/db/mongodb';
 import { COLLECTIONS } from '@/lib/db/schemas';
 import { generatePlaylist } from '@/lib/slideshow/playlist';
 import { findEventForSlideshow } from '@/lib/slideshow/resolve-event';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
 
 /**
  * GET /api/slideshows/[slideshowId]/next-candidate?excludeIds=id1,id2,...
@@ -25,6 +26,8 @@ export async function GET(
   { params }: { params: Promise<{ slideshowId: string }> }
 ) {
   try {
+    await checkRateLimit(request, RATE_LIMITS.SLIDESHOW_NEXT);
+
     const { slideshowId } = await params;
     const { searchParams } = request.nextUrl;
     const excludeIdsParam = searchParams.get('excludeIds');
@@ -50,8 +53,10 @@ export async function GET(
     }
 
     const eventUuid = event.eventId;
-    console.log(`[NextCandidate] Slideshow stored event ref: ${slideshow.eventId}`);
-    console.log(`[NextCandidate] Event UUID (event.eventId): ${eventUuid}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[NextCandidate] Slideshow stored event ref: ${slideshow.eventId}`);
+      console.log(`[NextCandidate] Event UUID (event.eventId): ${eventUuid}`);
+    }
 
     // Get submissions for the event, sorted by playCount (least played first)
     // Exclude submissions already in buffer
@@ -101,6 +106,9 @@ export async function GET(
       totalAvailable: submissions.length,
     });
   } catch (error) {
+    if (error instanceof NextResponse) {
+      return error;
+    }
     console.error('Error generating next candidate:', error);
     return NextResponse.json(
       { error: 'Failed to generate next candidate' },

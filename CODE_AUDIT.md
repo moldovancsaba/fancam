@@ -785,6 +785,11 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 | Public APIs | Slideshow playlist / next-candidate, `GET /api/events/[id]`, hashtags | Intentionally public; slideshow IDs and event IDs are capability URLs — treat as secrets in UI |
 | `npm audit` | 8 issues (incl. `next`, transitive packages) | Documented; run `npm audit fix` / plan Next patch upgrades |
 
+**Continuation (same pass, ops hardening)**:
+- Rate-limit buckets use **`pathname:ip`** (not full URL) so query strings cannot bypass limits.
+- **`LOGIN_INIT`** on `GET /api/auth/login`; **`READ`** on `GET /api/hashtags`; **`SLIDESHOW_PLAYLIST`** / **`SLIDESHOW_NEXT`** on public slideshow routes; **`429`** returned via thrown `NextResponse` where handlers had plain `catch`.
+- Verbose **`[Playlist]`** / **`[NextCandidate]`** `console.log` output only when **`NODE_ENV !== 'production'`**.
+
 **Duplicate `requireAdmin`**: `lib/auth/session.ts` still exports `requireAdmin`/`requireAuth` throwing `Error` (for Server Components / non-API use). **API routes** should prefer `@/lib/api` middleware so failures are `NextResponse` with correct status codes.
 
 ---
