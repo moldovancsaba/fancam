@@ -308,6 +308,26 @@ API rate limits use **Upstash** when both variables are set; otherwise limits ar
 4. **Redeploy** the project (Deployments → ⋮ → Redeploy).
 5. Locally: add the same keys to **`.env.local`**, then run **`npm run env:verify`** — you should see **`✓ Upstash Redis: PING ok`**.
 
+### Vercel CLI (link + env)
+
+Install/use the CLI with **`npx vercel@latest`**. Log in once: **`vercel login`**.
+
+- **Link this repo** to the production project (team **`narimato`**, project **`camera`**):
+
+  ```bash
+  npx vercel@latest link --yes --scope narimato --project camera
+  ```
+
+  Creates **`.vercel/`** (listed in **`.gitignore`** — do not commit).
+
+- **Pull cloud env vars** into **`.env.local`** (overwrites that file — back it up first if needed):
+
+  ```bash
+  npm run vercel:env-pull
+  ```
+
+Shorthand scripts: **`npm run vercel:link`**, **`npm run vercel:env-pull`**.
+
 ---
 
 ## License

@@ -12,7 +12,9 @@
     "type-check": "tsc --noEmit",
     "db:ensure-indexes": "tsx scripts/run-ensure-indexes.ts",
     "db:verify-uri": "tsx scripts/verify-mongo-uri.ts",
-    "env:verify": "tsx scripts/verify-env.ts"
+    "env:verify": "tsx scripts/verify-env.ts",
+    "vercel:link": "npx vercel@latest link",
+    "vercel:env-pull": "npx vercel@latest env pull .env.local --yes"
   },
   "keywords": [
     "photo-frames",
