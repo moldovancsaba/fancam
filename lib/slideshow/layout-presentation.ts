@@ -68,15 +68,17 @@ export function safetyGradientCss(primary: string, accent: string): string {
   return `linear-gradient(to bottom left, ${primary}, ${accent})`;
 }
 
-/** Flex container for positioning the rigid videowall in the viewport. */
+/**
+ * Flex alignment only — do not set width/height here.
+ * `height: 100%` (or width) would override Tailwind `h-screen` / collapse when the
+ * parent chain has no explicit height, which broke the public layout page.
+ */
 export function layoutRootFlexStyle(
   vertical: LayoutAlignVertical,
   horizontal: LayoutAlignHorizontal
 ): CSSProperties {
   return {
     display: 'flex',
-    width: '100%',
-    height: '100%',
     alignItems:
       vertical === 'top'
         ? 'flex-start'
