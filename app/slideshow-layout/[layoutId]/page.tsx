@@ -7,7 +7,7 @@
 
 import { use, useEffect, useMemo, useState } from 'react';
 import { SlideshowPlayerCore } from '@/components/slideshow/SlideshowPlayerCore';
-import { areaToGridPlacement } from '@/lib/slideshow/layout-geometry';
+import { computeCompactGridSpec } from '@/lib/slideshow/layout-geometry';
 import {
   layoutGridStageDimensions,
   type ViewportScaleMode,
@@ -82,6 +82,16 @@ export default function SlideshowLayoutPage({
     };
   }, [layoutId]);
 
+  const compactGrid = useMemo(
+    () =>
+      computeCompactGridSpec(
+        layout?.areas ?? [],
+        layout && layout.rows >= 1 ? layout.rows : 1,
+        layout && layout.cols >= 1 ? layout.cols : 1
+      ),
+    [layout]
+  );
+
   const stage = useMemo(() => {
     if (!layout || vw <= 0 || vh <= 0) {
       return { width: 0, height: 0 };
@@ -89,11 +99,11 @@ export default function SlideshowLayoutPage({
     return layoutGridStageDimensions(
       vw,
       vh,
-      layout.cols,
-      layout.rows,
+      compactGrid.effectiveCols,
+      compactGrid.effectiveRows,
       layout.viewportScale
     );
-  }, [layout, vw, vh]);
+  }, [layout, compactGrid, vw, vh]);
 
   if (error) {
     return (
@@ -142,17 +152,13 @@ export default function SlideshowLayoutPage({
         <div
           className="grid w-full h-full bg-transparent"
           style={{
-            gridTemplateColumns: `repeat(${layout.cols}, minmax(0, 1fr))`,
-            gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`,
+            gridTemplateColumns: `repeat(${compactGrid.effectiveCols}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${compactGrid.effectiveRows}, minmax(0, 1fr))`,
             gap: 0,
           }}
         >
           {layout.areas.map((area) => {
-            const placement = areaToGridPlacement(
-              area.tiles,
-              layout.rows,
-              layout.cols
-            );
+            const placement = compactGrid.areaToPlacement(area.tiles);
             if (!placement) return null;
             return (
               <div

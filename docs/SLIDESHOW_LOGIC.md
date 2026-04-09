@@ -278,6 +278,7 @@ A **layout** combines several **existing slideshows** on one screen. Each **regi
 | **Player** | `SlideshowPlayerCore` with `variant="embedded"` and **`instanceKey={area.id}`** per region; shared logic with single `/slideshow/[slideshowId]` (fullscreen omits `instanceKey`) |
 | **Grid outer size** | `layoutGridStageDimensions`: viewport box aspect **(columns × 16) : (rows × 9)** so each **equal** grid cell is **16:9** (N×N is no longer square tiles). |
 | **Gaps** | Public grid uses **`gap: 0`** (one rigid videowall); admin builder preview also uses **no gap** so WYSIWYG. |
+| **Unused tracks** | On **`/slideshow-layout/...`**, rows/columns that contain **no tiles** from any area are **collapsed** (`computeCompactGridSpec` in `layout-geometry.ts`), so checkerboard-style definitions (e.g. images on rows 0,2,4 of a 6-row logical grid) render as **contiguous** image bands without blank “stripe” rows showing only the outer background. |
 
 **Delay:** On each embedded player, `delayMs` extends the **first** slide duration only, so two cells using the same slideshow start their rotation out of phase.
 
