@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   // Create a mock user session for development
   const mockUser = {
     id: 'dev-user-001',
-    email: 'dev@fancamera.app',
+    email: 'dev@camera.local',
     name: 'Development User',
     role: 'admin' as const,
   };

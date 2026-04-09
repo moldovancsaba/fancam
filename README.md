@@ -295,7 +295,7 @@ SSO_REDIRECT_URI=http://localhost:3000/api/auth/callback
 
 IMGBB_API_KEY=...
 
-NEXT_PUBLIC_APP_URL=https://fancamera.vercel.app
+NEXT_PUBLIC_APP_URL=https://camera.doneisbetter.com
 ```
 
 ### Upstash Redis (optional, recommended on Vercel)

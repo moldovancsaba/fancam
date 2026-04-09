@@ -1036,7 +1036,7 @@ Updated SSO service integration to support version 5.23.1, verifying OAuth2 endp
 - OAuth2 Authorization Code Flow with PKCE
 - Public client configuration (token_endpoint_auth_method: 'none')
 - PKCE mandatory for security (require_pkce: true)
-- Redirect URIs verified: http://localhost:3000/api/auth/callback, https://fancamera.vercel.app/api/auth/callback
+- Redirect URIs verified: http://localhost:3000/api/auth/callback, https://camera.doneisbetter.com/api/auth/callback
 - Client ID: 1e59b6a1-3c18-4141-9139-7a3dd0da62bf (status: active)
 
 **OAuth2 Endpoints** (unchanged, compatible):

@@ -40,8 +40,8 @@ const root = resolve(import.meta.dirname, '..');
 const envPath = resolve(root, '.env');
 const vars = parseEnvFile(envPath);
 
-vars.NEXT_PUBLIC_APP_URL = 'https://fancamera.vercel.app';
-vars.SSO_REDIRECT_URI = 'https://fancamera.vercel.app/api/auth/callback';
+vars.NEXT_PUBLIC_APP_URL = 'https://camera.doneisbetter.com';
+vars.SSO_REDIRECT_URI = 'https://camera.doneisbetter.com/api/auth/callback';
 
 const sensitive = new Set([
   'MONGODB_URI',
