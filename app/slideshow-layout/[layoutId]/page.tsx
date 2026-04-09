@@ -39,18 +39,48 @@ interface LayoutPayload {
   safetyAccentColor: string;
 }
 
+/**
+ * Size used for layoutGridStageDimensions — must match the visible viewport.
+ * innerWidth/innerHeight alone disagree with 100vw/100vh in Safari (esp. landscape);
+ * visualViewport + clientWidth/Height align better with what actually fits on screen.
+ */
+function readViewportCssPixels(): { w: number; h: number } {
+  if (typeof window === 'undefined') return { w: 0, h: 0 };
+  const vv = window.visualViewport;
+  if (
+    vv &&
+    Number.isFinite(vv.width) &&
+    Number.isFinite(vv.height) &&
+    vv.width > 8 &&
+    vv.height > 8
+  ) {
+    return { w: Math.floor(vv.width), h: Math.floor(vv.height) };
+  }
+  const el = document.documentElement;
+  const w = el.clientWidth || window.innerWidth;
+  const h = el.clientHeight || window.innerHeight;
+  return {
+    w: Math.max(0, Math.floor(w)),
+    h: Math.max(0, Math.floor(h)),
+  };
+}
+
 function useViewportSize() {
   const [size, setSize] = useState(() =>
-    typeof window !== 'undefined'
-      ? { w: window.innerWidth, h: window.innerHeight }
-      : { w: 0, h: 0 }
+    typeof window !== 'undefined' ? readViewportCssPixels() : { w: 0, h: 0 }
   );
 
   useEffect(() => {
-    const set = () => setSize({ w: window.innerWidth, h: window.innerHeight });
+    const set = () => setSize(readViewportCssPixels());
     set();
     window.addEventListener('resize', set);
-    return () => window.removeEventListener('resize', set);
+    window.visualViewport?.addEventListener('resize', set);
+    window.visualViewport?.addEventListener('scroll', set);
+    return () => {
+      window.removeEventListener('resize', set);
+      window.visualViewport?.removeEventListener('resize', set);
+      window.visualViewport?.removeEventListener('scroll', set);
+    };
   }, []);
 
   return size;
@@ -152,7 +182,7 @@ export default function SlideshowLayoutPage({
   if (error) {
     return (
       <div
-        className={`relative w-screen h-screen overflow-hidden flex ${alignClass} text-red-300`}
+        className={`relative min-h-0 min-w-0 w-screen h-screen overflow-hidden flex ${alignClass} text-red-300`}
       >
         <div
           className="absolute inset-0 z-0 pointer-events-none"
@@ -167,7 +197,7 @@ export default function SlideshowLayoutPage({
   if (!layout) {
     return (
       <div
-        className={`relative h-screen w-screen overflow-hidden flex ${alignClass}`}
+        className={`relative min-h-0 min-w-0 h-screen w-screen overflow-hidden flex ${alignClass}`}
         aria-busy="true"
       >
         <div
@@ -188,7 +218,7 @@ export default function SlideshowLayoutPage({
 
   return (
     <div
-      className={`relative w-screen h-screen overflow-hidden flex ${alignClass}`}
+      className={`relative min-h-0 min-w-0 w-screen h-screen overflow-hidden flex ${alignClass}`}
     >
       <div
         className="absolute inset-0 z-0 pointer-events-none"
@@ -210,14 +240,22 @@ export default function SlideshowLayoutPage({
       ) : null}
 
       <div
-        className="relative z-10 overflow-hidden shadow-2xl"
+        className={
+          letterboxFit
+            ? 'relative z-10 min-h-0 min-w-0 overflow-hidden shadow-2xl'
+            : 'relative z-10 overflow-hidden shadow-2xl'
+        }
         style={{
           aspectRatio: rigidAspect,
           width: stage.width > 0 ? `${stage.width}px` : '100%',
           height: 'auto',
           boxSizing: 'border-box',
           ...(letterboxFit
-            ? { maxWidth: '100%', maxHeight: '100%' }
+            ? {
+                /* Viewport caps: % alone inside flex can fail in Safari landscape */
+                maxWidth: 'min(100vw, 100%)',
+                maxHeight: 'min(100vh, 100%)',
+              }
             : {}),
         }}
       >

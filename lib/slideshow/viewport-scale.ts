@@ -65,14 +65,23 @@ export function layoutGridStageDimensions(
   const ar = (cols * SLIDESHOW_STAGE_ASPECT) / rows;
   const car = viewportW / viewportH;
   if (mode === 'fit') {
+    let width: number;
+    let height: number;
     if (car > ar) {
-      const height = viewportH;
-      const width = height * ar;
-      return { width, height };
+      height = viewportH;
+      width = height * ar;
+    } else {
+      width = viewportW;
+      height = width / ar;
     }
-    const width = viewportW;
-    const height = width / ar;
-    return { width, height };
+    /* Uniform scale fixes float noise and keeps aspect when capping to viewport */
+    const scale = Math.min(1, viewportW / width, viewportH / height);
+    width *= scale;
+    height *= scale;
+    return {
+      width: Math.max(0, Math.floor(width)),
+      height: Math.max(0, Math.floor(height)),
+    };
   }
   if (car > ar) {
     const width = viewportW;
