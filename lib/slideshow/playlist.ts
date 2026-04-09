@@ -152,17 +152,15 @@ export function detectAspectRatio(width: number, height: number): AspectRatio {
 
 /**
  * Generate playlist of next N slides from submissions
- * 
- * @param submissions - Array of submissions sorted by playCount ASC, createdAt ASC
+ *
+ * @param submissions - Caller-defined order (playlist route: fairness sort, then optional shuffle / rotate per `instanceKey`). Re-sorting here would break independent layout cells.
  * @param limit - Maximum number of slides to generate (default: 10)
  * @returns Array of Slide objects ready for display
  */
 export function generatePlaylist(submissions: any[], limit: number = 10): Slide[] {
   const playlist: Slide[] = [];
   
-  // CRITICAL: Group by aspect ratio FIRST, then sort each group by playCount
-  // This ensures we can find enough images of same aspect ratio to create mosaics
-  
+  // Group by aspect ratio while preserving order within each bucket (see @param).
   const landscape: any[] = [];
   const square: any[] = [];
   const portrait: any[] = [];
@@ -190,19 +188,6 @@ export function generatePlaylist(submissions: any[], limit: number = 10): Slide[
         break;
     }
   }
-  
-  // Sort each group by playCount (least played first), then createdAt (OLDEST first)
-  // CRITICAL: This must match the API sorting to maintain consistency
-  const sortByPlayCount = (a: any, b: any) => {
-    const aCount = a.playCount || 0;
-    const bCount = b.playCount || 0;
-    if (aCount !== bCount) return aCount - bCount; // Ascending playCount (0, 1, 2, ... lowest first)
-    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); // Ascending createdAt (oldest first)
-  };
-  
-  landscape.sort(sortByPlayCount);
-  square.sort(sortByPlayCount);
-  portrait.sort(sortByPlayCount);
   
   // Build playlist: prioritize 16:9, then mosaics
   // Generate up to limit slides

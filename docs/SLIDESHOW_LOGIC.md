@@ -33,7 +33,7 @@ This document describes how event slideshows are **created**, how **playlists** 
 
 The slideshow shows event submissions on a large screen with:
 
-- **Fair rotation** via `playCount` (least played first), then `createdAt` (oldest first). With **`orderMode: 'random'`**, the server **shuffles** before `generatePlaylist` (`playlist/route.ts`): **unkeyed** clients use `Math.random()` (Fisher–Yates); with **`instanceKey`** (layout regions send each area’s `id`), shuffle is **seeded** (`hash(instanceKey) XOR` per-request salt) so duplicate `slideshowId` cells get **different** orderings. With **`orderMode: 'fixed'`** and **`instanceKey`**, the sorted list is **cyclically rotated** by `hash(instanceKey) mod N` so cells do **not** all start on the same head (otherwise every tile shows the same first slide).
+- **Fair rotation** via `playCount` (least played first), then `createdAt` (oldest first). With **`orderMode: 'random'`**, the server **shuffles** before `generatePlaylist` (`playlist/route.ts`): **unkeyed** clients use `Math.random()` (Fisher–Yates); with **`instanceKey`** (`layoutId:areaId` on layouts), shuffle is **seeded** (`hash(instanceKey) XOR` per-request salt) so duplicate `slideshowId` cells get **different** orderings. With **`orderMode: 'fixed'`** and **`instanceKey`**, the sorted list is **cyclically rotated** by `hash(instanceKey) mod N` so cells do **not** all start on the same head (otherwise every tile shows the same first slide).
 - **Aspect-aware layouts**: full-frame landscape, or **mosaics** for portrait (3-up) and square (6-up) inside a fixed **16:9** stage.
 - A **FIFO slide queue** in the browser (`SlideshowPlayerCore`): **`bufferSize`** is only a **target queue depth** for smooth playback (not “how many slides total”). Initial **`GET …/playlist`** seeds the queue; in **loop** mode the client **tops the queue back up** toward `bufferSize` with **`GET …/playlist?limit=N`** (`maintainLoopBuffer`) after each advance and on a light interval—playback does not end when the buffer is consumed. **`playMode: 'once'`** still drains the initial queue without loop refill.
 
@@ -90,7 +90,7 @@ Operators copy the player link as **`{origin}/slideshow/{slideshowId}`**.
 |--------|---------|
 | `limit` | Max slides to return; default `slideshow.bufferSize` or 10 |
 | `exclude` | Comma-separated **submission `_id`** strings to omit from the aggregate `$match` (for alternate clients or experiments; **`SlideshowPlayerCore` prefetch does not pass `exclude` today**) |
-| `instanceKey` | Optional string (trimmed, max 256 chars). **Layouts** pass each region’s stable id. **`random`:** seeded shuffle (`hash(key) XOR` per-request salt) so regions differ. **`fixed`:** cyclic **rotate** of the fairness-sorted list by `hash(key) mod N` so regions do not mirror the same first slide. Responses use **`Cache-Control: private, no-store`** so browsers/CDNs do not reuse one cell’s JSON for another. Omit on `/slideshow/{id}` fullscreen (unchanged behavior). |
+| `instanceKey` | Optional string (trimmed, max 256 chars). **Layouts** pass **`{layoutId}:{area.id}`** so keys stay unique. **`random`:** seeded shuffle (`hash(key) XOR` per-request salt) so regions differ. **`fixed`:** cyclic **rotate** of the fairness-sorted list by `hash(key) mod N` so regions do not mirror the same first slide. **`generatePlaylist`** preserves submission order inside aspect buckets (it does **not** re-sort by `playCount`), or per-cell shuffle/rotate would be undone. Responses use **`Cache-Control: private, no-store`**. Omit on `/slideshow/{id}` fullscreen (unchanged behavior). |
 
 ### Steps
 
@@ -125,7 +125,7 @@ Uses **width/height** from `metadata.finalWidth/Height` (fallback `originalWidth
 
 ### Building slides
 
-Submissions are split into **landscape / square / portrait** arrays, each sorted by **`playCount` then `createdAt`** (same fairness as the API).
+Submissions are split into **landscape / square / portrait** arrays **in caller order** (fairness + shuffle/rotate already applied in the playlist route). The buckets are **not** re-sorted, so layout **`instanceKey`** streams stay independent.
 
 Then slides are appended in a loop until **`limit`** or nothing can be added:
 
@@ -180,7 +180,7 @@ The player calls this **when a slide becomes visible**, asynchronously (errors m
 
 ### Embedded (layouts)
 
-- Same component with `variant="embedded"`, per-region **`instanceKey`** (the layout area `id`, for independent random queues), and per-region **`objectFit`** (`contain` \| `cover`). **Stage-in-cell** fit/fill is driven by this prop (not by slideshow `viewportScale`). See §13.
+- Same component with `variant="embedded"`, per-region **`instanceKey`** (`layoutId:areaId` for independent queues), and per-region **`objectFit`** (`contain` \| `cover`). **Stage-in-cell** fit/fill is driven by this prop (not by slideshow `viewportScale`). See §13.
 
 ### Controls (fullscreen only)
 
@@ -230,7 +230,7 @@ flowchart LR
 | Goal | Where to change |
 |------|------------------|
 | Who appears in the pool | `$match` in `playlist/route.ts` (archived, hidden, inactive users) |
-| Fairness ordering | Aggregate `$sort` in playlist route + per-bucket sort in `playlist.ts`; **`orderMode: random`** shuffles before `generatePlaylist` |
+| Fairness ordering | Aggregate `$sort` in playlist route; **`orderMode: random`** (and **`instanceKey` rotate** when fixed) apply **before** `generatePlaylist`, which **keeps** that order within each aspect bucket (no extra per-bucket sort). |
 | Mosaic sizes / order of landscape vs mosaics | `generatePlaylist` loop in `playlist.ts` |
 | Slide duration / buffer size | Slideshow document + `SlideshowManager` PATCH |
 | Visual layout / 16:9 stage / fullscreen fit vs fill | `SlideshowPlayerCore.tsx` + `lib/slideshow/viewport-scale.ts` |
@@ -275,7 +275,7 @@ A **layout** combines several **existing slideshows** on one screen. Each **regi
 | **Public API** | `GET /api/slideshow-layouts/[layoutId]` (rate limit `SLIDESHOW_LAYOUT_GET`) |
 | **Admin API** | `POST` / `GET ?eventId=` / `PATCH ?id=` / `DELETE ?id=` on `/api/slideshow-layouts` |
 | **Admin UI** | Event page → **Event Slideshow Layouts**; edit → `/admin/events/[id]/layouts/[layoutMongoId]` (grid builder) |
-| **Player** | `SlideshowPlayerCore` with `variant="embedded"` and **`instanceKey={area.id}`** per region; shared logic with single `/slideshow/[slideshowId]` (fullscreen omits `instanceKey`) |
+| **Player** | `SlideshowPlayerCore` with `variant="embedded"` and **`instanceKey={layoutId + ':' + area.id}`** per region; shared logic with single `/slideshow/[slideshowId]` (fullscreen omits `instanceKey`) |
 | **Grid outer size** | `layoutGridStageDimensions` picks pixel size to fit the viewport; the stage wrapper also sets CSS **`aspect-ratio: (cols×16)/(rows×9)`** (`layoutGridAspectRatioCss`) so letterbox **fit** cannot squash the videowall if `max-*` clamps one side. **Fill** omits `max-width`/`max-height` so overflow can crop as intended. |
 | **Embedded player** | `SlideshowPlayerCore` **fills each grid cell** (`100%`×`100%`); it does **not** force an inner 16:9 letterbox inside the cell, so a **spanned** region keeps **(spanCols×16):(spanRows×9)** (e.g. 2×1 → 32:9). |
 | **Gaps** | Public grid uses **`gap: 0`** (one rigid videowall); admin builder preview also uses **no gap** so WYSIWYG. |

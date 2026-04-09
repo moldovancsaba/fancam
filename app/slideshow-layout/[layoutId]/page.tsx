@@ -181,7 +181,7 @@ export default function SlideshowLayoutPage({
                 {area.slideshowId ? (
                   <SlideshowPlayerCore
                     slideshowId={area.slideshowId}
-                    instanceKey={area.id}
+                    instanceKey={`${layout.layoutId}:${area.id}`}
                     objectFit={area.objectFit === 'cover' ? 'cover' : 'contain'}
                     delayMs={area.delayMs ?? 0}
                     variant="embedded"
