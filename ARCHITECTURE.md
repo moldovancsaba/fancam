@@ -79,7 +79,7 @@ Camera is a professional web application that allows users to capture or upload 
 - **MongoDB 6.8.0** (Atlas hosted)
   - Why: Flexible schema, JSON-like documents, excellent Node.js support
   - Connection: Singleton pattern with connection pooling (10 max, 2 min)
-  - Collections: partners, events, frames, submissions, slideshows, users_cache
+  - Collections: partners, events, frames, submissions, slideshows, slideshow_layouts, users_cache
 
 ### Authentication
 - **Custom SSO Integration** (sso.doneisbetter.com v5.16.0)
@@ -322,6 +322,35 @@ All timestamps use ISO 8601 format with milliseconds UTC: `YYYY-MM-DDTHH:MM:SS.s
 
 **Indexes**: `slideshowId` (unique), `eventId`, `isActive`
 
+### 6. Slideshow layouts collection (composite videowall)
+```typescript
+{
+  _id: ObjectId,
+  layoutId: string,             // UUID — public URL /slideshow-layout/[layoutId]
+  eventId: string,              // Event UUID (same as slideshows.eventId)
+  eventName: string,
+  name: string,
+  rows: number,                 // Grid size (1–24)
+  cols: number,
+  areas: Array<{
+    id: string,
+    label: string,
+    tiles: string[],            // "r-c" tile ids (non-overlapping)
+    slideshowId: string | null,
+    delayMs: number,            // First-slide phase offset per cell
+    objectFit: 'contain' | 'cover',
+    color?: string              // Admin builder preview only
+  }>,
+  background?: string,          // Optional CSS background-* for outer frame
+  isActive: boolean,
+  createdBy: string,
+  createdAt: string,
+  updatedAt: string
+}
+```
+
+**Indexes**: `layoutId` (unique), `eventId` + `createdAt` (see `lib/db/ensure-indexes.ts`)
+
 ---
 
 ## API Architecture
@@ -358,6 +387,9 @@ All timestamps use ISO 8601 format with milliseconds UTC: `YYYY-MM-DDTHH:MM:SS.s
 │   ├── /[id]/playlist       GET    Get slideshow playlist
 │   ├── /[id]/next-candidate GET    Get next slide (rolling buffer)
 │   └── /[id]/played         POST   Update play counts
+├── /slideshow-layouts
+│   ├── /                    GET    List layouts by eventId, POST Create, PATCH Update, DELETE
+│   └── /[layoutId]          GET    Public layout JSON (composite player)
 └── /hashtags         GET    Get unique hashtags for filtering
 ```
 
@@ -522,23 +554,22 @@ import { Button, Card, Badge, LoadingSpinner } from '@/components/shared';
 ```
 
 ### Slideshow Playlist Algorithm
+
+**Full detail:** `docs/SLIDESHOW_LOGIC.md` (player v2, APIs, A/B/C buffers, filters).
+
 ```
-1. Query all non-archived submissions for event
-2. Group by aspect ratio:
-   - 16:9 (landscape): Display full screen
-   - 1:1 (square): Group 2 per slide (side by side)
-   - 9:16 (portrait): Group 3 per slide (side by side)
-3. Sort by playCount ASC, then createdAt ASC (least-played first)
-4. Build playlist using round-robin:
-   - Add 1 landscape (if available)
-   - Add 1 square mosaic (if 2+ available)
-   - Add 1 portrait mosaic (if 3+ available)
-   - Repeat until buffer full
-5. Return playlist with slide metadata
-6. Frontend displays slides with fade transitions
-7. After each slide displayed, POST /api/slideshows/[id]/played
-8. Increment playCount for displayed submissions
-9. Fetch next candidate to maintain rolling buffer
+1. Resolve event from slideshow (UUID or legacy Mongo event _id)
+2. Query submissions for event (archived/hidden/inactive filters; optional exclude ids for A/B/C buffers)
+3. Sort by playCount ASC, then createdAt ASC (least-played, oldest first)
+4. generatePlaylist: bucket by aspect ratio, then round-robin:
+   - Add 1 landscape (single image) if available
+   - Add 1 portrait mosaic if 3+ portrait images available
+   - Add 1 square mosaic if 6+ square images available
+   - Repeat until limit (bufferSize / request limit)
+5. GET /api/slideshows/[id]/playlist returns slides + settings
+6. Player preloads images; rotates playlists A → B → C; rebuilds finished buffer with exclude= when refreshStrategy is continuous
+7. On each slide shown, POST /api/slideshows/[id]/played (fire-and-forget) increments playCount / per-slideshow stats
+8. Public UI uses instant cuts (fadeDurationMs stored but not cross-fading in v2 player)
 ```
 
 ---

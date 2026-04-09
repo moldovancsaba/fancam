@@ -145,5 +145,17 @@ export async function ensureCameraIndexes(db: Db): Promise<IndexEnsureResult[]> 
       .createIndex({ eventId: 1, createdAt: -1 }, { name: 'slideshows_eventId_createdAt' })
   );
 
+  // --- slideshow layouts (composite videowall) ---
+  await track(COLLECTIONS.SLIDESHOW_LAYOUTS, () =>
+    db
+      .collection(COLLECTIONS.SLIDESHOW_LAYOUTS)
+      .createIndex({ layoutId: 1 }, { unique: true, name: 'slideshow_layouts_layoutId_unique' })
+  );
+  await track(COLLECTIONS.SLIDESHOW_LAYOUTS, () =>
+    db
+      .collection(COLLECTIONS.SLIDESHOW_LAYOUTS)
+      .createIndex({ eventId: 1, createdAt: -1 }, { name: 'slideshow_layouts_eventId_createdAt' })
+  );
+
   return results;
 }

@@ -38,6 +38,7 @@ export const COLLECTIONS = {
   SUBMISSIONS: 'submissions',
   USERS_CACHE: 'users_cache',
   SLIDESHOWS: 'slideshows',
+  SLIDESHOW_LAYOUTS: 'slideshow_layouts',
 } as const;
 
 // ============================================================================
@@ -648,6 +649,49 @@ export interface Slideshow {
   createdAt: string;                 // ISO 8601 timestamp with milliseconds UTC
   updatedAt: string;                 // ISO 8601 timestamp with milliseconds UTC
 }
+
+// ============================================================================
+// SLIDESHOW LAYOUTS COLLECTION
+// ============================================================================
+
+/**
+ * One region on a grid (CardMass-style tile union). Each area plays one slideshow.
+ */
+export interface SlideshowLayoutArea {
+  id: string;
+  label: string;
+  /** Tile ids "r-c" covering this region; must not overlap other areas */
+  tiles: string[];
+  /** Preview color in admin builder (optional) */
+  color?: string;
+  slideshowId: string | null;
+  /** Phase offset so duplicate slideshowIds in one layout show different slides */
+  delayMs: number;
+  /** FIT = contain, FILL = cover; aspect ratio always preserved */
+  objectFit: 'contain' | 'cover';
+}
+
+/**
+ * Composite videowall: multiple cells, each hosting an existing slideshow config.
+ */
+export interface SlideshowLayout {
+  _id?: ObjectId;
+  layoutId: string;
+  eventId: string;
+  eventName: string;
+  name: string;
+  rows: number;
+  cols: number;
+  areas: SlideshowLayoutArea[];
+  /** Optional outer frame CSS (background-* only), same idea as CardMass boards */
+  background?: string;
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type NewSlideshowLayout = Omit<SlideshowLayout, '_id'>;
 
 // ============================================================================
 // USERS CACHE COLLECTION (Optional)

@@ -83,6 +83,9 @@ export const RATE_LIMITS = {
   /** Rolling-buffer next slide (same rough budget as playlist) */
   SLIDESHOW_NEXT: { max: 180, windowMs: 60 * 1000 },
 
+  /** Public slideshow layout JSON (infrequent vs playlist polling) */
+  SLIDESHOW_LAYOUT_GET: { max: 120, windowMs: 60 * 1000 },
+
   /** OAuth login start (/api/auth/login) — curb redirect storms per IP */
   LOGIN_INIT: { max: 25, windowMs: 15 * 60 * 1000 },
 } as const;

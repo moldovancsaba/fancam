@@ -13,6 +13,7 @@ import { ObjectId } from 'mongodb';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import SlideshowManager from '@/components/admin/SlideshowManager';
+import SlideshowLayoutManager from '@/components/admin/SlideshowLayoutManager';
 import EventGallery from '@/components/admin/EventGallery';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import StyleInheritanceIndicator from '@/components/admin/StyleInheritanceIndicator';
@@ -34,6 +35,7 @@ export default async function EventDetailPage({
   let partner: any = null;
   let submissions: any[] = [];
   let slideshows: any[] = [];
+  let slideshowLayouts: any[] = [];
   let dbError = null;
 
   try {
@@ -106,10 +108,18 @@ export default async function EventDetailPage({
       .limit(50)
       .toArray();
 
-    // Get slideshows for this event
+    // Get slideshows for this event (UUID on new docs; legacy may use Mongo event id)
     slideshows = await db
       .collection(COLLECTIONS.SLIDESHOWS)
-      .find({ eventId: id })
+      .find({
+        $or: [{ eventId: event.eventId }, { eventId: id }],
+      })
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    slideshowLayouts = await db
+      .collection(COLLECTIONS.SLIDESHOW_LAYOUTS)
+      .find({ eventId: event.eventId })
       .sort({ createdAt: -1 })
       .toArray();
 
@@ -573,6 +583,20 @@ export default async function EventDetailPage({
         <SlideshowManager
           eventId={id}
           initialSlideshows={JSON.parse(JSON.stringify(slideshows))}
+        />
+      </div>
+
+      {/* Slideshow layouts (multi-cell videowall) */}
+      <div id="slideshow-layouts" className="mt-8">
+        <SlideshowLayoutManager
+          eventMongoId={id}
+          initialLayouts={slideshowLayouts.map((l) => ({
+            _id: l._id!.toString(),
+            layoutId: l.layoutId,
+            name: l.name,
+            isActive: l.isActive !== false,
+            createdAt: l.createdAt,
+          }))}
         />
       </div>
 
