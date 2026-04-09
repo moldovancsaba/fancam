@@ -7,6 +7,11 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import { ObjectId } from 'mongodb';
 import { notFound } from 'next/navigation';
 import SlideshowLayoutBuilder from '@/components/admin/SlideshowLayoutBuilder';
+import {
+  normalizeLayoutAlignHorizontal,
+  normalizeLayoutAlignVertical,
+  normalizeStoredSafetyColor,
+} from '@/lib/slideshow/layout-presentation';
 
 export default async function EditSlideshowLayoutPage({
   params,
@@ -37,6 +42,8 @@ export default async function EditSlideshowLayoutPage({
     notFound();
   }
 
+  const layoutRaw = layout as Record<string, unknown>;
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
@@ -59,6 +66,18 @@ export default async function EditSlideshowLayoutPage({
             ? 'fill'
             : 'fit'
         }
+        initialAlignVertical={normalizeLayoutAlignVertical(
+          layoutRaw.alignVertical
+        )}
+        initialAlignHorizontal={normalizeLayoutAlignHorizontal(
+          layoutRaw.alignHorizontal
+        )}
+        initialSafetyPrimaryColor={normalizeStoredSafetyColor(
+          layoutRaw.safetyPrimaryColor
+        )}
+        initialSafetyAccentColor={normalizeStoredSafetyColor(
+          layoutRaw.safetyAccentColor
+        )}
       />
     </div>
   );

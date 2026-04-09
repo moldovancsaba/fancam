@@ -276,6 +276,8 @@ A **layout** combines several **existing slideshows** on one screen. Each **regi
 | **Admin API** | `POST` / `GET ?eventId=` / `PATCH ?id=` / `DELETE ?id=` on `/api/slideshow-layouts` |
 | **Admin UI** | Event page → **Event Slideshow Layouts**; edit → `/admin/events/[id]/layouts/[layoutMongoId]` (grid builder) |
 | **Player** | `SlideshowPlayerCore` with `variant="embedded"` and **`instanceKey={layoutId + ':' + area.id}`** per region; shared logic with single `/slideshow/[slideshowId]` (fullscreen omits `instanceKey`) |
+| **Alignment** | **`alignVertical`** (`top` \| `middle` \| `bottom`) and **`alignHorizontal`** (`left` \| `center` \| `right`) position the rigid grid in the viewport (Fit letterbox / Fill crop anchor). |
+| **Safety gradient** | **`safetyPrimaryColor`** / **`safetyAccentColor`** — optional `#RRGGBB`; empty uses the same default diagonal gradient as single-slideshow failover (`#312e81` → `#0f172a`). Painted behind the grid; optional **`background`** CSS layer stacks on top. |
 | **Grid outer size** | `layoutGridStageDimensions` picks pixel size to fit the viewport; the stage wrapper also sets CSS **`aspect-ratio: (cols×16)/(rows×9)`** (`layoutGridAspectRatioCss`) so letterbox **fit** cannot squash the videowall if `max-*` clamps one side. **Fill** omits `max-width`/`max-height` so overflow can crop as intended. |
 | **Embedded player** | `SlideshowPlayerCore` **fills each grid cell** (`100%`×`100%`); it does **not** force an inner 16:9 letterbox inside the cell, so a **spanned** region keeps **(spanCols×16):(spanRows×9)** (e.g. 2×1 → 32:9). |
 | **Gaps** | Public grid uses **`gap: 0`** (one rigid videowall); admin builder preview also uses **no gap** so WYSIWYG. |

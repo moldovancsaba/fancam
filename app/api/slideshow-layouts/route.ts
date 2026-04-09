@@ -13,6 +13,11 @@ import {
 } from '@/lib/db/schemas';
 import { getSession } from '@/lib/auth/session';
 import { validateLayoutAreas } from '@/lib/slideshow/validate-layout';
+import {
+  normalizeLayoutAlignHorizontal,
+  normalizeLayoutAlignVertical,
+  parseSafetyColorInput,
+} from '@/lib/slideshow/layout-presentation';
 
 const DEFAULT_ROWS = 2;
 const DEFAULT_COLS = 2;
@@ -111,6 +116,15 @@ export async function POST(request: NextRequest) {
 
     const layoutViewportScale = body.viewportScale === 'fill' ? 'fill' : 'fit';
 
+    const sp = parseSafetyColorInput(body.safetyPrimaryColor);
+    const sa = parseSafetyColorInput(body.safetyAccentColor);
+    if (!sp.ok) {
+      return NextResponse.json({ error: sp.error }, { status: 400 });
+    }
+    if (!sa.ok) {
+      return NextResponse.json({ error: sa.error }, { status: 400 });
+    }
+
     const doc = {
       layoutId: generateId(),
       eventId: event.eventId,
@@ -121,6 +135,10 @@ export async function POST(request: NextRequest) {
       areas: layoutAreas,
       background: typeof body.background === 'string' ? body.background : '',
       viewportScale: layoutViewportScale,
+      alignVertical: normalizeLayoutAlignVertical(body.alignVertical),
+      alignHorizontal: normalizeLayoutAlignHorizontal(body.alignHorizontal),
+      safetyPrimaryColor: sp.value,
+      safetyAccentColor: sa.value,
       isActive: true,
       createdBy: session.user.id,
       createdAt: generateTimestamp(),
@@ -222,6 +240,41 @@ export async function PATCH(request: NextRequest) {
         );
       }
       updates.viewportScale = body.viewportScale;
+    }
+
+    if (body.alignVertical !== undefined) {
+      const v = body.alignVertical;
+      if (v !== 'top' && v !== 'middle' && v !== 'bottom') {
+        return NextResponse.json(
+          { error: 'alignVertical must be "top", "middle", or "bottom"' },
+          { status: 400 }
+        );
+      }
+      updates.alignVertical = v;
+    }
+    if (body.alignHorizontal !== undefined) {
+      const h = body.alignHorizontal;
+      if (h !== 'left' && h !== 'center' && h !== 'right') {
+        return NextResponse.json(
+          { error: 'alignHorizontal must be "left", "center", or "right"' },
+          { status: 400 }
+        );
+      }
+      updates.alignHorizontal = h;
+    }
+    if (body.safetyPrimaryColor !== undefined) {
+      const p = parseSafetyColorInput(body.safetyPrimaryColor);
+      if (!p.ok) {
+        return NextResponse.json({ error: p.error }, { status: 400 });
+      }
+      updates.safetyPrimaryColor = p.value;
+    }
+    if (body.safetyAccentColor !== undefined) {
+      const a = parseSafetyColorInput(body.safetyAccentColor);
+      if (!a.ok) {
+        return NextResponse.json({ error: a.error }, { status: 400 });
+      }
+      updates.safetyAccentColor = a.value;
     }
 
     let nextRows = existing.rows as number;

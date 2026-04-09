@@ -8,6 +8,13 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { SlideshowLayoutArea } from '@/lib/db/schemas';
 import { layoutGridStageDimensions } from '@/lib/slideshow/viewport-scale';
+import {
+  layoutRootFlexStyle,
+  resolvedSafetyGradientColors,
+  safetyGradientCss,
+  type LayoutAlignHorizontal,
+  type LayoutAlignVertical,
+} from '@/lib/slideshow/layout-presentation';
 
 type TileId = string;
 
@@ -62,6 +69,10 @@ interface Props {
   initialAreas: SlideshowLayoutArea[];
   initialBackground?: string;
   initialViewportScale?: 'fit' | 'fill';
+  initialAlignVertical?: LayoutAlignVertical;
+  initialAlignHorizontal?: LayoutAlignHorizontal;
+  initialSafetyPrimaryColor?: string;
+  initialSafetyAccentColor?: string;
 }
 
 export default function SlideshowLayoutBuilder({
@@ -74,6 +85,10 @@ export default function SlideshowLayoutBuilder({
   initialAreas,
   initialBackground = '',
   initialViewportScale = 'fit',
+  initialAlignVertical = 'middle',
+  initialAlignHorizontal = 'center',
+  initialSafetyPrimaryColor = '',
+  initialSafetyAccentColor = '',
 }: Props) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
@@ -83,6 +98,23 @@ export default function SlideshowLayoutBuilder({
   const [background, setBackground] = useState(initialBackground || '');
   const [viewportScale, setViewportScale] = useState<'fit' | 'fill'>(
     initialViewportScale === 'fill' ? 'fill' : 'fit'
+  );
+  const [alignVertical, setAlignVertical] = useState<LayoutAlignVertical>(
+    initialAlignVertical === 'top' || initialAlignVertical === 'bottom'
+      ? initialAlignVertical
+      : 'middle'
+  );
+  const [alignHorizontal, setAlignHorizontal] =
+    useState<LayoutAlignHorizontal>(
+      initialAlignHorizontal === 'left' || initialAlignHorizontal === 'right'
+        ? initialAlignHorizontal
+        : 'center'
+    );
+  const [safetyPrimaryColor, setSafetyPrimaryColor] = useState(
+    initialSafetyPrimaryColor || ''
+  );
+  const [safetyAccentColor, setSafetyAccentColor] = useState(
+    initialSafetyAccentColor || ''
   );
   const [slideshows, setSlideshows] = useState<SlideshowOpt[]>([]);
   const [saving, setSaving] = useState(false);
@@ -254,6 +286,15 @@ export default function SlideshowLayoutBuilder({
 
   const selectedArea = areas.find((a) => a.id === selectedAreaId) ?? null;
 
+  const previewSafety = resolvedSafetyGradientColors(
+    safetyPrimaryColor,
+    safetyAccentColor
+  );
+  const previewSafetyBg = safetyGradientCss(
+    previewSafety.primary,
+    previewSafety.accent
+  );
+
   const updateSelectedArea = (patch: Partial<SlideshowLayoutArea>) => {
     if (!selectedAreaId) return;
     setAreas((prev) =>
@@ -274,6 +315,10 @@ export default function SlideshowLayoutBuilder({
           areas,
           background,
           viewportScale,
+          alignVertical,
+          alignHorizontal,
+          safetyPrimaryColor,
+          safetyAccentColor,
         }),
       });
       if (!res.ok) {
@@ -394,6 +439,82 @@ export default function SlideshowLayoutBuilder({
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+            <label className="flex flex-col text-sm gap-1">
+              <span className="text-gray-600 dark:text-gray-400">
+                Align vertical
+              </span>
+              <select
+                value={alignVertical}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === 'top' || v === 'middle' || v === 'bottom') {
+                    setAlignVertical(v);
+                  }
+                }}
+                className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800"
+              >
+                <option value="top">Top</option>
+                <option value="middle">Middle</option>
+                <option value="bottom">Bottom</option>
+              </select>
+            </label>
+            <label className="flex flex-col text-sm gap-1">
+              <span className="text-gray-600 dark:text-gray-400">
+                Align horizontal
+              </span>
+              <select
+                value={alignHorizontal}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === 'left' || v === 'center' || v === 'right') {
+                    setAlignHorizontal(v);
+                  }
+                }}
+                className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800"
+              >
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </label>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2 max-w-xl">
+            Positions the videowall in the browser: letterbox (Fit) margins, or which part stays visible
+            when Fill crops overflow.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+            <label className="flex flex-col text-sm gap-1">
+              <span className="text-gray-600 dark:text-gray-400">
+                Safety gradient — primary (#RRGGBB)
+              </span>
+              <input
+                type="text"
+                placeholder="e.g. #312e81 (empty = default)"
+                value={safetyPrimaryColor}
+                onChange={(e) => setSafetyPrimaryColor(e.target.value)}
+                className="font-mono text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800"
+              />
+            </label>
+            <label className="flex flex-col text-sm gap-1">
+              <span className="text-gray-600 dark:text-gray-400">
+                Safety gradient — accent (#RRGGBB)
+              </span>
+              <input
+                type="text"
+                placeholder="e.g. #0f172a (empty = default)"
+                value={safetyAccentColor}
+                onChange={(e) => setSafetyAccentColor(e.target.value)}
+                className="font-mono text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800"
+              />
+            </label>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2 max-w-xl">
+            Diagonal gradient behind the grid (letterbox / margins). Matches single-slideshow defaults
+            when left blank. Save validates hex or empty.
+          </p>
+
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Drag on the grid to select tiles, then name the region and commit. Each region maps to one
             slideshow. Tiles cannot overlap.
@@ -401,11 +522,28 @@ export default function SlideshowLayoutBuilder({
 
           <div
             ref={wrapRef}
-            className="border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden"
-            style={{ height: 'min(60vh, 520px)' }}
+            className="border border-gray-200 dark:border-gray-600 rounded-lg p-2 overflow-hidden relative"
+            style={{
+              height: 'min(60vh, 520px)',
+              ...layoutRootFlexStyle(alignVertical, alignHorizontal),
+              background: previewSafetyBg,
+            }}
           >
+            {background.trim() ? (
+              <>
+                <style
+                  dangerouslySetInnerHTML={{
+                    __html: `.slideshow-layout-builder-root-bg { ${background.trim()} }`,
+                  }}
+                />
+                <div
+                  className="slideshow-layout-builder-root-bg absolute inset-0 z-[1] pointer-events-none"
+                  aria-hidden
+                />
+              </>
+            ) : null}
             <div
-              className="grid shrink-0"
+              className="grid shrink-0 relative z-10"
               style={{
                 width:
                   gridStage.width > 0 ? `${gridStage.width}px` : undefined,

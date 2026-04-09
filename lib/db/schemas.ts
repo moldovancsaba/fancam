@@ -700,6 +700,13 @@ export interface SlideshowLayout {
   background?: string;
   /** Letterbox full grid in browser vs crop to cover; grid keeps cols:rows as one rigid unit */
   viewportScale?: 'fit' | 'fill';
+  /** Position rigid grid vertically in viewport (fit = letterbox margins; fill = crop anchor) */
+  alignVertical?: 'top' | 'middle' | 'bottom';
+  /** Position rigid grid horizontally in viewport */
+  alignHorizontal?: 'left' | 'center' | 'right';
+  /** Safety letterbox gradient, hex #RRGGBB; empty = default indigo/slate */
+  safetyPrimaryColor?: string;
+  safetyAccentColor?: string;
   isActive: boolean;
   createdBy: string;
   createdAt: string;
