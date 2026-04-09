@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Slideshow playback: FIFO queue of slides (bufferSize), prefetched next slide,
- * offline rotation over the queue so a single cached image never yields a black frame.
+ * Slideshow playback: FIFO queue whose target depth is `bufferSize` (prefetch / smoothness only).
+ * Loop mode never treats buffer length as “end of show”; we top the queue up asynchronously.
  */
 
 import {
@@ -78,6 +78,12 @@ function normalizeDelayMs(raw: number | string | undefined): number {
   return 0;
 }
 
+function clampTimingMs(raw: unknown, fallback: number, max: number): number {
+  const n = typeof raw === 'number' ? raw : parseInt(String(raw ?? ''), 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(0, Math.min(max, Math.floor(n)));
+}
+
 /**
  * Fullscreen: use slideshow.viewportScale (fit letterbox vs fill crop in browser).
  * Embedded (layout tile): use region Photo scaling — cover = 16:9 stage fills the cell (crop overflow),
@@ -114,22 +120,41 @@ export function SlideshowPlayerCore({
   const [isPlaying, setIsPlaying] = useState(true);
   const [playbackEnded, setPlaybackEnded] = useState(false);
   const [displayEpoch, setDisplayEpoch] = useState(0);
+  const [fadeOpaque, setFadeOpaque] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const hideControlsTimeout = useRef<NodeJS.Timeout | null>(null);
   const preloadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
   const pendingInitialDelayRef = useRef(delayMs > 0);
-  const nextPreparedRef = useRef<Slide | null>(null);
-  const prefetchBusyRef = useRef(false);
   const onceInitialRef = useRef<Slide[] | null>(null);
   const settingsRef = useRef<SlideshowSettings | null>(null);
+  const transitionMsRef = useRef(8000);
+  const fadeMsRef = useRef(0);
+  const bufferTargetRef = useRef(10);
+  const slideQueueRef = useRef<Slide[]>([]);
+  const refillBusyRef = useRef(false);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   /** Black stage floor until configured failover background image is preloaded / painted */
   const [failoverBgImageReady, setFailoverBgImageReady] = useState(true);
 
   useEffect(() => {
     settingsRef.current = settings;
+    if (!settings) return;
+    transitionMsRef.current = clampTimingMs(
+      settings.transitionDurationMs,
+      8000,
+      600_000
+    );
+    fadeMsRef.current = clampTimingMs(settings.fadeDurationMs, 0, 60_000);
+    bufferTargetRef.current = Math.max(
+      1,
+      Math.min(100, Math.floor(Number(settings.bufferSize) || 10))
+    );
   }, [settings]);
+
+  useEffect(() => {
+    slideQueueRef.current = slideQueue;
+  }, [slideQueue]);
 
   useEffect(() => {
     pendingInitialDelayRef.current = delayMs > 0;
@@ -171,39 +196,55 @@ export function SlideshowPlayerCore({
     [preloadImage]
   );
 
-  const fetchOneSlide = useCallback(async (): Promise<Slide | null> => {
-    try {
-      const qs = new URLSearchParams({ limit: '1' });
-      if (instanceKey?.trim()) {
-        qs.set('instanceKey', instanceKey.trim().slice(0, 256));
+  const fetchPlaylistChunk = useCallback(
+    async (limit: number): Promise<Slide[]> => {
+      const lim = Math.max(1, Math.min(50, Math.floor(limit)));
+      try {
+        const qs = new URLSearchParams({ limit: String(lim) });
+        if (instanceKey?.trim()) {
+          qs.set('instanceKey', instanceKey.trim().slice(0, 256));
+        }
+        const response = await fetch(
+          `/api/slideshows/${slideshowId}/playlist?${qs.toString()}`,
+          { cache: 'no-store' }
+        );
+        if (!response.ok) return [];
+        const data = await response.json();
+        return (data.playlist || []) as Slide[];
+      } catch {
+        return [];
       }
-      const response = await fetch(
-        `/api/slideshows/${slideshowId}/playlist?${qs.toString()}`
-      );
-      if (!response.ok) return null;
-      const data = await response.json();
-      const slide = data.playlist?.[0] as Slide | undefined;
-      return slide ?? null;
-    } catch {
-      return null;
-    }
-  }, [slideshowId, instanceKey]);
+    },
+    [slideshowId, instanceKey]
+  );
 
-  const prefetchNext = useCallback(async () => {
+  /** Keep loop queue near `bufferSize`; does not define how long the show runs. */
+  const maintainLoopBuffer = useCallback(async () => {
     const s = settingsRef.current;
     if (!s || s.playMode === 'once') return;
-    if (prefetchBusyRef.current) return;
-    prefetchBusyRef.current = true;
+    if (refillBusyRef.current) return;
+    refillBusyRef.current = true;
     try {
-      const slide = await fetchOneSlide();
-      nextPreparedRef.current = slide;
-      if (slide) {
-        await preloadSlide(slide);
+      const target = bufferTargetRef.current;
+      for (let round = 0; round < 8; round++) {
+        const len = slideQueueRef.current.length;
+        if (len >= target) break;
+        const need = target - len;
+        const chunk = await fetchPlaylistChunk(Math.min(need, 25));
+        if (chunk.length === 0) break;
+        await Promise.all(chunk.map((sl) => preloadSlide(sl)));
+        setSlideQueue((curr) => {
+          if (curr.length >= target) return curr;
+          const stillNeed = target - curr.length;
+          const take = chunk.slice(0, Math.max(stillNeed, 1));
+          return [...curr, ...take];
+        });
+        await new Promise((r) => setTimeout(r, 0));
       }
     } finally {
-      prefetchBusyRef.current = false;
+      refillBusyRef.current = false;
     }
-  }, [fetchOneSlide, preloadSlide]);
+  }, [fetchPlaylistChunk, preloadSlide]);
 
   const loadInitialBuffer = useCallback(async () => {
     try {
@@ -212,7 +253,6 @@ export function SlideshowPlayerCore({
       setPlaybackEnded(false);
       pendingInitialDelayRef.current = delayMs > 0;
       onceInitialRef.current = null;
-      nextPreparedRef.current = null;
 
       const initialQs = new URLSearchParams();
       if (instanceKey?.trim()) {
@@ -223,7 +263,7 @@ export function SlideshowPlayerCore({
         initialQuery.length > 0
           ? `/api/slideshows/${slideshowId}/playlist?${initialQuery}`
           : `/api/slideshows/${slideshowId}/playlist`;
-      const response = await fetch(playlistUrl);
+      const response = await fetch(playlistUrl, { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(`Failed to load slideshow: ${response.status}`);
       }
@@ -277,7 +317,9 @@ export function SlideshowPlayerCore({
             submissions: sl.submissions.map((s) => ({ ...s })),
           }));
         }
-        void prefetchNext();
+        if (data.slideshow.playMode !== 'once') {
+          void maintainLoopBuffer();
+        }
       } else {
         setDisplayEpoch(0);
         setSlideQueue([]);
@@ -289,7 +331,7 @@ export function SlideshowPlayerCore({
       setError(err instanceof Error ? err.message : 'Failed to load slideshow');
       setIsLoading(false);
     }
-  }, [slideshowId, instanceKey, preloadSlide, prefetchNext, delayMs]);
+  }, [slideshowId, instanceKey, preloadSlide, maintainLoopBuffer, delayMs]);
 
   useLayoutEffect(() => {
     if (!settings) return;
@@ -359,13 +401,15 @@ export function SlideshowPlayerCore({
     const applyInitialStagger =
       displayEpoch === 0 && pendingInitialDelayRef.current && delayMs > 0;
     const delayExtra = applyInitialStagger ? delayMs : 0;
+    const holdMs = transitionMsRef.current + delayExtra;
 
     const advanceTimer = setTimeout(() => {
       if (applyInitialStagger) {
         pendingInitialDelayRef.current = false;
       }
 
-      const playMode = settings.playMode === 'once' ? 'once' : 'loop';
+      const sNow = settingsRef.current;
+      const playMode = sNow?.playMode === 'once' ? 'once' : 'loop';
 
       if (playMode === 'once') {
         let advanced = false;
@@ -386,36 +430,63 @@ export function SlideshowPlayerCore({
         return;
       }
 
-      const incoming = nextPreparedRef.current;
-      nextPreparedRef.current = null;
-
       let advanced = false;
       setSlideQueue((q) => {
         if (q.length === 0) return q;
-        const tail = q.slice(1);
-        let nextQ: Slide[];
-        if (incoming) {
-          nextQ = [...tail, incoming];
-        } else {
-          nextQ = [...tail, q[0]];
-        }
         advanced = true;
-        return nextQ;
+        return q.slice(1);
       });
       if (advanced) setDisplayEpoch((e) => e + 1);
-      void prefetchNext();
-    }, settings.transitionDurationMs + delayExtra);
+      void maintainLoopBuffer();
+    }, holdMs);
 
     return () => {
       clearTimeout(advanceTimer);
     };
-  }, [settings, headSlide, queueLen, isPlaying, slideshowId, delayMs, displayEpoch, updatePlayCounts, prefetchNext]);
+  }, [
+    settings,
+    headSlide,
+    isPlaying,
+    delayMs,
+    displayEpoch,
+    updatePlayCounts,
+    maintainLoopBuffer,
+  ]);
 
   useEffect(() => {
-    const s = settingsRef.current;
-    if (!s || s.playMode === 'once' || !headSlide) return;
-    void prefetchNext();
-  }, [headSlide, prefetchNext, settings?.playMode]);
+    if (!settings || settings.playMode === 'once' || !isPlaying) return;
+    const id = window.setInterval(() => {
+      void maintainLoopBuffer();
+    }, 2500);
+    return () => clearInterval(id);
+  }, [settings, isPlaying, maintainLoopBuffer, slideshowId]);
+
+  const fadeMsForUi =
+    settings == null
+      ? 0
+      : clampTimingMs(settings.fadeDurationMs, 0, 60_000);
+  const headFadeKey =
+    settings && headSlide ? `${displayEpoch}:${slideKey(headSlide)}` : '';
+
+  useLayoutEffect(() => {
+    if (!headFadeKey) {
+      setFadeOpaque(true);
+      return;
+    }
+    if (fadeMsForUi <= 0) {
+      setFadeOpaque(true);
+      return;
+    }
+    if (displayEpoch === 0) {
+      setFadeOpaque(true);
+      return;
+    }
+    setFadeOpaque(false);
+    const raf = requestAnimationFrame(() => {
+      setFadeOpaque(true);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [headFadeKey, fadeMsForUi, displayEpoch]);
 
   const toggleFullscreen = () => {
     if (variant !== 'fullscreen' || !containerRef.current) return;
@@ -462,19 +533,15 @@ export function SlideshowPlayerCore({
       return;
     }
 
-    const incoming = nextPreparedRef.current;
-    nextPreparedRef.current = null;
     let advanced = false;
     setSlideQueue((q) => {
       if (q.length === 0) return q;
-      const tail = q.slice(1);
       advanced = true;
-      if (incoming) return [...tail, incoming];
-      return [...tail, q[0]];
+      return q.slice(1);
     });
     if (advanced) setDisplayEpoch((e) => e + 1);
-    void prefetchNext();
-  }, []);
+    void maintainLoopBuffer();
+  }, [maintainLoopBuffer]);
 
   const manualBack = useCallback(() => {
     pendingInitialDelayRef.current = false;
@@ -485,7 +552,11 @@ export function SlideshowPlayerCore({
       return [last, ...q.slice(0, -1)];
     });
     setDisplayEpoch((e) => e + 1);
-  }, []);
+    const s = settingsRef.current;
+    if (s && s.playMode !== 'once') {
+      void maintainLoopBuffer();
+    }
+  }, [maintainLoopBuffer]);
 
   useEffect(() => {
     if (variant !== 'fullscreen') return;
@@ -551,9 +622,6 @@ export function SlideshowPlayerCore({
   }
 
   const currentSlide = headSlide;
-  const currentSlideKey = currentSlide
-    ? `${displayEpoch}-${slideKey(currentSlide)}`
-    : 'empty';
 
   const fit = objectFit;
 
@@ -700,11 +768,15 @@ export function SlideshowPlayerCore({
       <div className="absolute inset-0 z-[2] flex items-center justify-center">
         {currentSlide ? (
           <div
-            key={currentSlideKey}
             style={{
               width: '100%',
               height: '100%',
               position: 'relative',
+              opacity: fadeOpaque ? 1 : 0,
+              transition:
+                fadeMsForUi > 0
+                  ? `opacity ${fadeMsForUi}ms ease-in-out`
+                  : undefined,
             }}
           >
             {renderSlide(currentSlide)}
@@ -765,7 +837,8 @@ export function SlideshowPlayerCore({
                 )}
               </button>
               <div className="flex-1 text-white text-sm">
-                Queue {queueLen > 0 ? `1 / ${queueLen}` : '0'} • Prefetch {settings.bufferSize}
+                Queue {queueLen > 0 ? `1 / ${queueLen}` : '0'} • Buffer depth{' '}
+                {settings.bufferSize}
               </div>
               <button
                 type="button"

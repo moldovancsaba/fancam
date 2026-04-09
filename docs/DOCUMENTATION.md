@@ -18,7 +18,7 @@ This repo’s behavior is defined by **the running code**. When docs and impleme
 
 ## Slideshow player (common drift)
 
-The public player is **`SlideshowPlayerCore`** (fullscreen wrapper: `app/slideshow/[slideshowId]/page.tsx`). It uses a **FIFO slide queue** seeded from **`GET …/playlist`** (length ≈ `bufferSize`) and, in **loop** mode, prefetches **one** next slide via **`GET …/playlist?limit=1`**. On **composite layouts**, the player passes **`instanceKey`** (layout area id) on those requests so **`orderMode: random`** shuffles **independently per region**. It does **not** implement a rotating **A / B / C** triple-buffer client; the `exclude` query on the playlist API exists mainly for **other clients** or future use—see code before documenting exclusion behavior for this player.
+The public player is **`SlideshowPlayerCore`** (fullscreen wrapper: `app/slideshow/[slideshowId]/page.tsx`). It uses a **FIFO slide queue** seeded from **`GET …/playlist`**; **`bufferSize`** is a **target depth** only—in **loop** mode **`maintainLoopBuffer`** refills with **`GET …/playlist?limit=N`** (plus a light interval) so playback is not tied to “running out of buffer.” On **composite layouts**, the player passes **`instanceKey`** (layout area id). It does **not** implement a rotating **A / B / C** triple-buffer client; the `exclude` query on the playlist API exists mainly for **other clients** or future use—see code before documenting exclusion behavior for this player.
 
 ## After you change behavior
 

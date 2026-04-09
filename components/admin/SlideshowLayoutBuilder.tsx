@@ -413,7 +413,7 @@ export default function SlideshowLayoutBuilder({
                   gridStage.height > 0 ? `${gridStage.height}px` : undefined,
                 gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
                 gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-                gap: 1,
+                gap: 0,
               }}
             >
               {Array.from({ length: rows * cols }, (_, i) => {

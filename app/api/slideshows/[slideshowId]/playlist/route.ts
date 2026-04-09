@@ -16,6 +16,7 @@ import { COLLECTIONS } from '@/lib/db/schemas';
 import {
   fnv1a32,
   generatePlaylist,
+  rotateLeftBy,
   shuffleInPlace,
   shuffleInPlaceSeeded,
   expandPlaylistToLength,
@@ -23,6 +24,13 @@ import {
 import { findEventForSlideshow } from '@/lib/slideshow/resolve-event';
 import { getInactiveUserEmails } from '@/lib/db/sso';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
+
+/** Playlist is personalized (random / instanceKey); never cache across clients or layout cells. */
+export const dynamic = 'force-dynamic';
+
+const PLAYLIST_NO_CACHE_HEADERS = {
+  'Cache-Control': 'private, no-store, must-revalidate',
+} as const;
 
 /**
  * GET /api/slideshows/[slideshowId]/playlist?limit=N&exclude=id1,id2,id3
@@ -169,6 +177,9 @@ export async function GET(
       } else {
         shuffleInPlace(submissions);
       }
+    } else if (instanceKey && submissions.length > 1) {
+      // Fixed fairness order: without this, every layout cell starts at the same head → identical tiles.
+      rotateLeftBy(submissions, fnv1a32(instanceKey) % submissions.length);
     }
 
     const playMode = slideshow.playMode === 'once' ? 'once' : 'loop';
@@ -206,7 +217,8 @@ export async function GET(
     }
 
     if (submissions.length === 0) {
-      return NextResponse.json({
+      return NextResponse.json(
+        {
         slideshow: {
           _id: slideshow._id,
           eventId: eventMongoId,
@@ -226,7 +238,9 @@ export async function GET(
         },
         playlist: [],
         message: 'No submissions available for this event',
-      });
+        },
+        { headers: PLAYLIST_NO_CACHE_HEADERS }
+      );
     }
 
     // Generate playlist with mosaic logic
@@ -236,7 +250,8 @@ export async function GET(
         ? expandPlaylistToLength(rawPlaylist, limit)
         : rawPlaylist;
 
-    return NextResponse.json({
+    return NextResponse.json(
+      {
       slideshow: {
         _id: slideshow._id,
         eventId: eventMongoId,
@@ -256,7 +271,9 @@ export async function GET(
       },
       playlist,
       totalSubmissions: submissions.length,
-    });
+      },
+      { headers: PLAYLIST_NO_CACHE_HEADERS }
+    );
   } catch (error) {
     if (error instanceof NextResponse) {
       return error;

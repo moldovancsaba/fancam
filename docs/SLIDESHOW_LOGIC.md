@@ -33,9 +33,9 @@ This document describes how event slideshows are **created**, how **playlists** 
 
 The slideshow shows event submissions on a large screen with:
 
-- **Fair rotation** via `playCount` (least played first), then `createdAt` (oldest first). With **`orderMode: 'random'`** on the slideshow, the server **shuffles** the submission list before `generatePlaylist` when there is more than one submission (`playlist/route.ts`): **unkeyed** clients use `Math.random()` (Fisher–Yates); clients that pass **`instanceKey`** (layout regions use each area’s `id`) use a **seeded** shuffle (`hash(instanceKey) XOR` per-request salt) so **two regions with the same `slideshowId` get independent orderings**, not one shared permutation.
+- **Fair rotation** via `playCount` (least played first), then `createdAt` (oldest first). With **`orderMode: 'random'`**, the server **shuffles** before `generatePlaylist` (`playlist/route.ts`): **unkeyed** clients use `Math.random()` (Fisher–Yates); with **`instanceKey`** (layout regions send each area’s `id`), shuffle is **seeded** (`hash(instanceKey) XOR` per-request salt) so duplicate `slideshowId` cells get **different** orderings. With **`orderMode: 'fixed'`** and **`instanceKey`**, the sorted list is **cyclically rotated** by `hash(instanceKey) mod N` so cells do **not** all start on the same head (otherwise every tile shows the same first slide).
 - **Aspect-aware layouts**: full-frame landscape, or **mosaics** for portrait (3-up) and square (6-up) inside a fixed **16:9** stage.
-- A **FIFO slide queue** in the browser (`SlideshowPlayerCore`): initial **`GET …/playlist`** returns up to `bufferSize` slides; playback pops the head and appends the next slide. In **loop** mode, the client prefetches **one** candidate via **`GET …/playlist?limit=1`** (no `exclude` today). If prefetch is slow, the current head may repeat so the queue never goes empty. **`playMode: 'once'`** drains the queue without prefetch rotation.
+- A **FIFO slide queue** in the browser (`SlideshowPlayerCore`): **`bufferSize`** is only a **target queue depth** for smooth playback (not “how many slides total”). Initial **`GET …/playlist`** seeds the queue; in **loop** mode the client **tops the queue back up** toward `bufferSize` with **`GET …/playlist?limit=N`** (`maintainLoopBuffer`) after each advance and on a light interval—playback does not end when the buffer is consumed. **`playMode: 'once'`** still drains the initial queue without loop refill.
 
 ---
 
@@ -90,7 +90,7 @@ Operators copy the player link as **`{origin}/slideshow/{slideshowId}`**.
 |--------|---------|
 | `limit` | Max slides to return; default `slideshow.bufferSize` or 10 |
 | `exclude` | Comma-separated **submission `_id`** strings to omit from the aggregate `$match` (for alternate clients or experiments; **`SlideshowPlayerCore` prefetch does not pass `exclude` today**) |
-| `instanceKey` | Optional string (trimmed, max 256 chars). When **`orderMode` is `random`**, the playlist shuffles submissions with a **seed derived from this key** (XOR with a per-request 32-bit salt) so different keys produce **different** random orderings—used by **composite layouts** so duplicate `slideshowId` regions do not share the same shuffle. Omit on `/slideshow/{id}` fullscreen (unchanged behavior). |
+| `instanceKey` | Optional string (trimmed, max 256 chars). **Layouts** pass each region’s stable id. **`random`:** seeded shuffle (`hash(key) XOR` per-request salt) so regions differ. **`fixed`:** cyclic **rotate** of the fairness-sorted list by `hash(key) mod N` so regions do not mirror the same first slide. Responses use **`Cache-Control: private, no-store`** so browsers/CDNs do not reuse one cell’s JSON for another. Omit on `/slideshow/{id}` fullscreen (unchanged behavior). |
 
 ### Steps
 
@@ -104,8 +104,8 @@ Operators copy the player link as **`{origin}/slideshow/{slideshowId}`**.
    - **Inactive users:** exclude SSO emails in the inactive set; keep anonymous pseudo users; exclude pseudo users with `userInfo.isActive === false` when applicable.
 5. If `exclude` is present, add `_id: { $nin: [ObjectId…] }` for valid ids.
 6. **Sort:** `normalizedPlayCount` ascending (`$ifNull(playCount, 0)`), then **`createdAt` ascending**.
-7. If **`orderMode` is `random`** and there is more than one submission: **shuffle** the array in place—**seeded** (`shuffleInPlaceSeeded` in `lib/slideshow/playlist.ts`) when `instanceKey` is present, otherwise **`shuffleInPlace`** (`Math.random()`).
-8. **`generatePlaylist(submissions, limit)`** → JSON: `slideshow` (settings + ids for client), `playlist`, `totalSubmissions`.
+7. If **`orderMode` is `random`** and there is more than one submission: **shuffle** in place—**seeded** when `instanceKey` is set, else **`shuffleInPlace`**. Else if **`instanceKey`** is set and there is more than one submission: **`rotateLeftBy`** (`lib/slideshow/playlist.ts`) by `fnv1a32(instanceKey) % length` so **fixed** order still **desyncs** across layout cells.
+8. **`generatePlaylist(submissions, limit)`** → JSON: `slideshow` (settings + ids for client), `playlist`, `totalSubmissions` (response headers: **no-store**).
 
 ---
 
@@ -162,14 +162,14 @@ The player calls this **when a slide becomes visible**, asynchronously (errors m
 1. Black full-viewport shell (no loading copy); optional **loading-slideshow** logo from `GET /api/events/{eventId}/logos` when `eventId` is present on the slideshow payload.
 2. `GET /api/slideshows/{id}/playlist` (optional `instanceKey` for layout cells) → `slideshow` settings + `playlist` array (length ≤ `bufferSize` unless `limit` query overrides).
 3. Preload all slide images and optional **`backgroundImageUrl`** before hiding the loading shell.
-4. In **loop** mode, fire **`prefetchNext`**: `GET /api/slideshows/{id}/playlist?limit=1` (same `instanceKey` when embedded) to populate a one-slide “next” slot (not wired with `exclude` in this client).
+4. In **loop** mode, **`maintainLoopBuffer`** calls **`GET /api/slideshows/{id}/playlist?limit=N`** (same `instanceKey` when embedded) so the queue trends toward **`bufferSize`**; this does not cap how long the show runs.
 
 ### Playback
 
 - **Queue:** React state `slideQueue` — head is the visible slide.
-- **Advance (loop):** after `transitionDurationMs` (+ optional layout `delayMs` on first tick), pop head, append prefetched slide if any else **re-append previous head** so playback never stalls empty.
+- **Advance (loop):** after **`transitionDurationMs`** (+ optional layout `delayMs` on the first tick only), **pop** the head, then **refill** the tail toward `bufferSize`. Timer duration is **not** reset by queue refills.
 - **Advance (once):** pop head until one slide left; then stop and show end UI.
-- **Transitions:** **Instant cut**; `fadeDurationMs` is not used as a cross-fade.
+- **Transitions:** if **`fadeDurationMs` > 0**, an **opacity ease** runs on the slide layer between advances (first slide skips fade). If **0**, the cut is instant.
 
 ### Layout (fullscreen)
 
@@ -192,7 +192,7 @@ The player calls this **when a slide becomes visible**, asynchronously (errors m
 
 **Route:** `app/api/slideshows/[slideshowId]/next-candidate/route.ts`
 
-Returns a **single** next slide using similar filtering and `generatePlaylist` with a limit of 1, with optional `excludeIds`. **`SlideshowPlayerCore` uses `…/playlist?limit=1` for prefetch**, not this route—keep both when evolving server logic.
+Returns a **single** next slide using similar filtering and `generatePlaylist` with a limit of 1, with optional `excludeIds`. **`SlideshowPlayerCore` tops up via `…/playlist?limit=N`**, not this route—keep both when evolving server logic.
 
 ---
 
@@ -218,7 +218,7 @@ flowchart LR
   PL --> SUB[(Mongo submissions)]
   PL --> GEN[generatePlaylist]
   GEN --> Player
-  Player -->|GET playlist limit=1| PL
+  Player -->|GET playlist limit=N| PL
   Player -->|POST played| PC[Played route]
   PC --> SUB
 ```
@@ -234,7 +234,7 @@ flowchart LR
 | Mosaic sizes / order of landscape vs mosaics | `generatePlaylist` loop in `playlist.ts` |
 | Slide duration / buffer size | Slideshow document + `SlideshowManager` PATCH |
 | Visual layout / 16:9 stage / fullscreen fit vs fill | `SlideshowPlayerCore.tsx` + `lib/slideshow/viewport-scale.ts` |
-| Client queue / prefetch | `SlideshowPlayerCore.tsx` (`slideQueue`, `prefetchNext`, `fetchOneSlide`) |
+| Client queue / buffer | `SlideshowPlayerCore.tsx` (`slideQueue`, `maintainLoopBuffer`, `fetchPlaylistChunk`) |
 | API throttling | `RATE_LIMITS` in `lib/api` |
 
 ---
@@ -277,6 +277,7 @@ A **layout** combines several **existing slideshows** on one screen. Each **regi
 | **Admin UI** | Event page → **Event Slideshow Layouts**; edit → `/admin/events/[id]/layouts/[layoutMongoId]` (grid builder) |
 | **Player** | `SlideshowPlayerCore` with `variant="embedded"` and **`instanceKey={area.id}`** per region; shared logic with single `/slideshow/[slideshowId]` (fullscreen omits `instanceKey`) |
 | **Grid outer size** | `layoutGridStageDimensions`: viewport box aspect **(columns × 16) : (rows × 9)** so each **equal** grid cell is **16:9** (N×N is no longer square tiles). |
+| **Gaps** | Public grid uses **`gap: 0`** (one rigid videowall); admin builder preview also uses **no gap** so WYSIWYG. |
 
 **Delay:** On each embedded player, `delayMs` extends the **first** slide duration only, so two cells using the same slideshow start their rotation out of phase.
 

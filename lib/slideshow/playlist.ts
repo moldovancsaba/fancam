@@ -56,6 +56,20 @@ export function shuffleInPlaceSeeded<T>(arr: T[], seed: number): void {
   }
 }
 
+/**
+ * Cyclic left-rotate in place so layout regions with the same fairness-sorted list
+ * do not all start on the same first submission (fixed orderMode + instanceKey).
+ */
+export function rotateLeftBy<T>(arr: T[], k: number): void {
+  const n = arr.length;
+  if (n <= 1) return;
+  let offset = k % n;
+  if (offset < 0) offset += n;
+  if (offset === 0) return;
+  const head = arr.splice(0, offset);
+  arr.push(...head);
+}
+
 function cloneSlide(s: Slide): Slide {
   return {
     type: s.type,
