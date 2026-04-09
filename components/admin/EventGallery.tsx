@@ -11,6 +11,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import RemoveSubmissionButton from './RemoveSubmissionButton';
+import EventGalleryUpload from './EventGalleryUpload';
 
 interface EventGalleryProps {
   eventId: string;
@@ -32,28 +33,42 @@ export default function EventGallery({
     setSubmissions(prev => prev.filter(s => s._id.toString() !== submissionId));
   };
 
+  const handleUploaded = (submission: Record<string, unknown>) => {
+    setSubmissions((prev) => [submission as any, ...prev].slice(0, 50));
+  };
+
   if (submissions.length === 0) {
     return (
-      <div className="p-12 text-center">
-        <div className="text-5xl mb-4">📸</div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-          No submissions yet
-        </h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-4">
-          Photos captured at this event will appear here
-        </p>
-        <Link
-          href={`/capture/${eventId}`}
-          className="inline-flex px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
-        >
-          📸 Start Capturing
-        </Link>
+      <div className="p-6 space-y-6">
+        <EventGalleryUpload
+          eventMongoId={eventId}
+          onUploaded={handleUploaded}
+        />
+        <div className="p-12 text-center border border-gray-200 dark:border-gray-700 rounded-lg">
+          <div className="text-5xl mb-4">📸</div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            No submissions yet
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Upload images above or open the public capture page for guests
+          </p>
+          <Link
+            href={`/capture/${eventId}`}
+            className="inline-flex px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"
+          >
+            📸 Start Capturing
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-6">
+      <EventGalleryUpload
+        eventMongoId={eventId}
+        onUploaded={handleUploaded}
+      />
       {/* Pinterest-style masonry grid */}
       <div className="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4">
         {submissions.map((submission: any) => (
