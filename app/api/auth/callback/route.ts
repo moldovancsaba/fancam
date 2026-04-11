@@ -17,6 +17,7 @@ import {
   exchangeCodeForToken,
   decodeIdToken,
   getUserInfo,
+  getOAuthCallbackRedirectUri,
 } from '@/lib/auth/sso';
 import { consumePendingSession, createSession } from '@/lib/auth/session';
 import { getAppPermission, hasAppAccess } from '@/lib/auth/sso-permissions';
@@ -90,7 +91,12 @@ export async function GET(request: NextRequest) {
     console.log('✓ State verified, exchanging code for tokens');
 
     // Exchange authorization code for tokens using PKCE verifier
-    const tokens = await exchangeCodeForToken(code, pendingSession.codeVerifier);
+    const redirectUri = getOAuthCallbackRedirectUri(request);
+    const tokens = await exchangeCodeForToken(
+      code,
+      pendingSession.codeVerifier,
+      redirectUri
+    );
     
     console.log('✓ Tokens obtained, extracting user info from ID token');
 

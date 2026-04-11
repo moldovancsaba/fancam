@@ -12,7 +12,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generatePKCEPair, generateState, getAuthorizationUrl } from '@/lib/auth/sso';
+import {
+  generatePKCEPair,
+  generateState,
+  getAuthorizationUrl,
+  getOAuthCallbackRedirectUri,
+} from '@/lib/auth/sso';
 import { setPendingSessionCookie } from '@/lib/auth/session';
 import { parseLoginProvider } from '@/lib/auth/social-login';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/api';
@@ -34,7 +39,9 @@ export async function GET(request: NextRequest) {
 
     // Build authorization URL with PKCE challenge
     // If user just logged out, force re-authentication with prompt=login
+    const redirectUri = getOAuthCallbackRedirectUri(request);
     const authUrl = getAuthorizationUrl(codeChallenge, state, {
+      redirectUri,
       prompt: fromLogout ? 'login' : undefined,
       provider,
     });

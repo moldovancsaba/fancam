@@ -295,12 +295,14 @@ MONGODB_DB=camera
 
 SSO_BASE_URL=https://...
 SSO_CLIENT_ID=...
-SSO_REDIRECT_URI=http://localhost:3000/api/auth/callback
 
 IMGBB_API_KEY=...
 
+# Public base URL for this deployment (emails, links — set per host in Vercel if needed).
 NEXT_PUBLIC_APP_URL=https://camera.doneisbetter.com
 ```
+
+Production web entrypoints include **`https://camera.doneisbetter.com`** and **`https://camera.messmass.com`**. OAuth **`redirect_uri`** is derived from the browser’s host (`…/api/auth/callback`), so in **SSO** (e.g. [sso.doneisbetter.com](https://sso.doneisbetter.com)) your Camera OAuth client must allowlist **every** callback you use (localhost, both camera hosts, preview URLs if applicable) and you should **remove** retired hosts (for example an old **fancam**-style URL) from that client’s redirect list so tokens are not issued back to stale domains.
 
 ### Upstash Redis (optional, recommended on Vercel)
 

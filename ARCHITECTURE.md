@@ -667,7 +667,7 @@ MONGODB_DB=camera
 # Authentication
 SSO_CLIENT_ID=...
 SSO_CLIENT_SECRET=...
-SSO_REDIRECT_URI=https://camera.domain.com/api/auth/callback
+# OAuth redirect_uri is built from the incoming request (/api/auth/callback); register each production host on the SSO client.
 SSO_AUTHORIZE_URL=https://sso.doneisbetter.com/authorize
 SSO_TOKEN_URL=https://sso.doneisbetter.com/token
 SSO_USERINFO_URL=https://sso.doneisbetter.com/userinfo

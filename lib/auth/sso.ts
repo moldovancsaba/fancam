@@ -24,6 +24,7 @@
  */
 
 import crypto from 'crypto';
+import type { NextRequest } from 'next/server';
 
 /**
  * Get SSO configuration with validation
@@ -38,16 +39,57 @@ function getSSoConfig() {
     throw new Error('SSO_CLIENT_ID environment variable is not defined');
   }
 
-  if (!process.env.SSO_REDIRECT_URI) {
-    throw new Error('SSO_REDIRECT_URI environment variable is not defined');
-  }
-
   return {
     baseUrl: process.env.SSO_BASE_URL,
     clientId: process.env.SSO_CLIENT_ID,
-    redirectUri: process.env.SSO_REDIRECT_URI,
     scopes: ['openid', 'profile', 'email'],
   } as const;
+}
+
+/**
+ * Public origin for the browser-facing URL (Vercel / proxies often set these; `request.url`
+ * alone can reflect the deployment hostname, which breaks OAuth redirect_uri allowlists).
+ */
+function getPublicOriginFromRequest(request: NextRequest): string {
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
+  const hostHeader = request.headers.get('host')?.split(',')[0]?.trim();
+
+  const host = forwardedHost || hostHeader;
+  if (host) {
+    const isLocal =
+      host.startsWith('localhost') ||
+      host.startsWith('127.0.0.1') ||
+      host.startsWith('[::1]');
+    const proto =
+      forwardedProto || (isLocal ? 'http' : 'https');
+    const safeProto = proto === 'http' || proto === 'https' ? proto : 'https';
+
+    try {
+      const u = new URL(`${safeProto}://${host}`);
+      if (u.port === '443' && u.protocol === 'https:') {
+        u.port = '';
+      }
+      if (u.port === '80' && u.protocol === 'http:') {
+        u.port = '';
+      }
+      return u.origin;
+    } catch {
+      // fall through to request.url
+    }
+  }
+
+  return new URL(request.url).origin;
+}
+
+/**
+ * OAuth2 redirect_uri for the authorization + token steps.
+ * Uses the browser-facing host so multiple custom domains on one deployment match SSO.
+ * Each exact URL must be allowlisted on the SSO OAuth client.
+ */
+export function getOAuthCallbackRedirectUri(request: NextRequest): string {
+  const origin = getPublicOriginFromRequest(request);
+  return new URL('/api/auth/callback', origin).href;
 }
 
 /**
@@ -158,7 +200,8 @@ export function generatePKCEPair(): PKCEPair {
 export function getAuthorizationUrl(
   codeChallenge: string,
   state: string,
-  options?: {
+  options: {
+    redirectUri: string;
     prompt?: 'login' | 'consent' | 'none' | 'select_account';
     /** Routes user straight to Google or Facebook at the SSO layer (sso.doneisbetter.com). */
     provider?: 'google' | 'facebook';
@@ -169,7 +212,7 @@ export function getAuthorizationUrl(
   
   const params = new URLSearchParams({
     client_id: config.clientId,
-    redirect_uri: config.redirectUri,
+    redirect_uri: options.redirectUri,
     response_type: 'code',
     scope: config.scopes.join(' '),
     state,
@@ -179,11 +222,11 @@ export function getAuthorizationUrl(
   
   // Add prompt parameter if provided (OIDC standard)
   // prompt=login forces re-authentication even if user has SSO session
-  if (options?.prompt) {
+  if (options.prompt) {
     params.set('prompt', options.prompt);
   }
 
-  if (options?.provider) {
+  if (options.provider) {
     params.set('provider', options.provider);
   }
 
@@ -200,7 +243,8 @@ export function getAuthorizationUrl(
  */
 export async function exchangeCodeForToken(
   code: string,
-  codeVerifier: string
+  codeVerifier: string,
+  redirectUri: string
 ): Promise<TokenResponse> {
   const config = SSO_CONFIG();
   const endpoints = SSO_ENDPOINTS();
@@ -208,7 +252,7 @@ export async function exchangeCodeForToken(
   const params = new URLSearchParams({
     grant_type: 'authorization_code',
     code,
-    redirect_uri: config.redirectUri,
+    redirect_uri: redirectUri,
     client_id: config.clientId,
     code_verifier: codeVerifier,
   });
