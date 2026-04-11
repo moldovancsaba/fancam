@@ -7,6 +7,7 @@
  */
 
 import { getSession } from '@/lib/auth/session';
+import { APP_VERSION } from '@/lib/app-version';
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons';
 
 // This page uses cookies, so it must be dynamic
@@ -112,8 +113,11 @@ export default async function Home({
           )}
         </div>
 
-        <div className="mt-12 text-sm text-gray-500 dark:text-gray-400">
+        <div className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">
           <p>🔐 Google / Facebook via SSO | ☁️ MongoDB Atlas | 🖼️ imgbb</p>
+          <p className="mt-2 text-xs font-mono text-gray-400 dark:text-gray-500">
+            v{APP_VERSION}
+          </p>
         </div>
       </main>
     </div>

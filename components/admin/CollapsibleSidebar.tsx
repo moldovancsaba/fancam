@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { APP_VERSION } from '@/lib/app-version';
 
 interface CollapsibleSidebarProps {
   session: {
@@ -26,8 +27,6 @@ interface CollapsibleSidebarProps {
 export default function CollapsibleSidebar({ session }: CollapsibleSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
-
-  const version = '2.7.0'; // This should match package.json
 
   const navItems = [
     { href: '/admin', icon: '📊', label: 'Dashboard' },
@@ -124,7 +123,7 @@ export default function CollapsibleSidebar({ session }: CollapsibleSidebarProps)
               {/* Version Number */}
               <div className="mt-3 text-center">
                 <p className="text-xs text-gray-400 dark:text-gray-600 font-mono">
-                  v{version}
+                  v{APP_VERSION}
                 </p>
               </div>
             </>
@@ -133,7 +132,7 @@ export default function CollapsibleSidebar({ session }: CollapsibleSidebarProps)
           {isCollapsed && (
             <div className="mt-2 text-center">
               <p className="text-[10px] text-gray-400 dark:text-gray-600 font-mono">
-                v{version}
+                v{APP_VERSION}
               </p>
             </div>
           )}
